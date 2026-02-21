@@ -12,9 +12,10 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 
 ### 项目演示视频
 
+**v3.0版本演示视频**：*（预留位置，等待作者上传）*
+
 **v2.0版本演示视频**：[【爱弥斯-多功能桌宠】ai聊天、番茄时钟、划词翻译、音乐播放、鸣潮快速启动](https://www.bilibili.com/video/BV1qnZWBuE7K/) 
 
-**v3.0版本演示视频**：*（预留位置，等待作者上传）*
 
 ---
 
@@ -132,11 +133,12 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 - Windows 10/11
 - Python 3.12+ （开发环境）
 - 麦克风（语音功能）
+- 网络连接（AI功能和语音服务）
 
 ### 安装步骤
 
-#### 方式一：直接使用exe文件
-1. 下载最新版本的 `aemeath.exe`
+#### 方式一：直接使用exe文件（推荐）
+1. 下载最新版本的 `Aemeath.exe`（窗口版本）或 `Aemeath_Console.exe`（控制台版本）
 2. 双击运行即可
 
 #### 方式二：从源码运行
@@ -144,6 +146,47 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 2. 进入目录：`cd ameath_DesktopPet`
 3. 安装依赖：`pip install -r requirements.txt`
 4. 运行程序：`python main.py`
+
+#### 方式三：自行打包
+1. 安装依赖：`pip install -r requirements.txt`
+2. 运行打包脚本：`python build.py`
+3. 打包完成后，在 `dist` 目录中找到生成的exe文件
+
+### 调试模式
+
+项目提供了详细的调试模式，帮助诊断问题：
+
+#### 启用调试模式的方法
+
+**方法1：修改配置文件**
+1. 打开配置文件（位于用户目录下的 `AppData/Roaming/Aemeath_config.json`）
+2. 将 `"debug_mode": false` 改为 `"debug_mode": true`
+3. 保存文件并重启程序
+
+**方法2：修改源代码**
+1. 打开 `src/voice/voice_assistant.py` 文件
+2. 找到以下代码块（约在第59行）：
+   ```python
+   # ==================== 调试模式设置 ====================
+   # self.debug_mode = True  # 取消此行注释以启用调试模式
+   self.debug_mode = False  # 默认关闭调试模式
+   # =================================================
+   ```
+3. 注释掉 `self.debug_mode = False` 并取消注释 `self.debug_mode = True`
+4. 保存文件并重新运行程序
+
+#### 调试模式的作用
+- 显示详细的语音识别和合成过程
+- 输出API调用状态和错误信息
+- 记录音频播放和接收情况
+- 帮助诊断网络连接问题
+
+#### 推荐使用场景
+- 语音功能无法正常工作时
+- API调用失败时排查问题
+- 开发新功能时进行调试
+
+**注意**：调试模式会产生大量日志输出，可能影响性能，建议在问题解决后关闭调试模式。
 
 ### AI配置说明
 
@@ -192,19 +235,106 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 
 ### 语音功能配置
 
-1. **阿里云ASR配置**：
-   - 在阿里云控制台开通智能语音交互服务
-   - 获取AccessKey ID和AccessKey Secret
-   - 在程序中配置ASR相关参数
+语音功能是v3.0版本的核心特性，包含语音唤醒、语音识别和语音合成三个部分。
 
-2. **阿里云TTS配置**：
-   - 在阿里云控制台开通语音合成服务
-   - 获取API密钥
-   - 在程序中配置TTS相关参数
+#### 1. 语音唤醒配置
+- **离线关键词检测**：基于sherpa-onnx实现，无需网络连接
+- **默认唤醒词**："爱弥斯"（可在配置中修改）
+- **模型文件**：程序首次运行时会自动下载模型文件到 `assets/models/kws/` 目录
+- **自定义训练**：支持使用自己的音频数据训练唤醒词
 
-3. **关键词检测模型**：
-   - 程序会自动下载sherpa-onnx模型文件
-   - 支持自定义唤醒词训练
+#### 2. 语音识别配置（ASR）
+
+**阿里云ASR配置**：
+1. 访问[阿里云智能语音交互控制台](https://nls-portal.console.aliyun.com/)
+2. 开通"智能语音交互"服务
+3. 创建项目，获取以下信息：
+   - AppKey（应用标识）
+   - Token（访问令牌，可通过token管理器自动获取）
+   - 服务区域（默认：wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1）
+
+**Token自动获取指南**：
+- 程序内置了Token自动管理功能，只需配置AccessKey ID和AccessKey Secret
+- Token会自动刷新，无需手动更新
+- 在AI配置界面中填入AccessKey信息即可
+4. 在程序中配置ASR相关参数
+
+**支持的音频格式**：
+- 采样率：16kHz
+- 位深：16bit
+- 声道：单声道
+- 格式：PCM/WAV
+
+#### 5. 兼容的ASR和TTS服务
+
+**当前支持的ASR（语音识别）服务**：
+1. **阿里云智能语音交互（NLS）**
+   - 模型：paraformer-realtime-v2（推荐）
+   - 特点：高精度、低延迟、支持实时流式识别
+   - 适用场景：实时对话、语音指令
+
+2. **阿里云百炼ASR**
+   - 模型：sensevoice-v1
+   - 特点：多语言支持、噪声鲁棒性强
+   - 适用场景：多语言环境、嘈杂环境
+
+**当前支持的TTS（语音合成）服务**：
+1. **阿里云百炼CosyVoice**
+   - 模型：cosyvoice-v1、cosyvoice-v3-flash（推荐）
+   - 音色：longwan、cosyvoice-v3-flash-anbao1等
+   - 特点：自然流畅、情感丰富、低延迟
+   - 适用场景：日常对话、情感表达
+
+2. **阿里云智能语音交互（NLS）TTS**
+   - 模型：samert-v1、xiaoyun、xiaogang等
+   - 特点：稳定可靠、多种音色可选
+   - 适用场景：播报、提示音
+
+**服务选择建议**：
+- **实时对话场景**：推荐使用阿里云NLS ASR + 百炼CosyVoice TTS
+- **多语言需求**：推荐使用百炼ASR + 百炼CosyVoice TTS
+- **稳定性优先**：推荐使用阿里云NLS ASR + NLS TTS
+
+**扩展支持**：
+- 项目架构支持快速接入新的ASR和TTS服务
+- 如需支持其他服务商，请联系项目维护者
+- 可根据需求定制特定场景的语音解决方案
+
+#### 3. 语音合成配置（TTS）
+
+**DashScope TTS配置**：
+1. 访问[阿里云百炼控制台](https://bailian.console.aliyun.com/)
+2. 开通"DashScope"服务
+3. 获取API-KEY
+4. 在程序中配置TTS相关参数
+
+**支持的音色和模型**：
+- 模型：cosyvoice-v1、cosyvoice-v3-flash等
+- 音色：longwan、cosyvoice-v3-flash-anbao1等
+- 音量：0-100（可调节）
+
+#### 4. 常见问题解决
+
+**问题1：语音唤醒不灵敏**
+- 检查麦克风是否正常工作
+- 调整唤醒词检测阈值（默认0.5）
+- 确保环境噪音不过大
+
+**问题2：语音识别失败**
+- 检查网络连接
+- 验证ASR配置是否正确
+- 启用调试模式查看详细错误信息
+
+**问题3：语音合成无声音**
+- 检查系统音量和程序音量设置
+- 验证TTS API密钥是否正确
+- 确保音频设备正常工作
+- 启用调试模式查看详细错误信息
+
+**问题4：打包后语音功能失效**
+- 使用控制台版本（Aemeath_Console.exe）查看错误信息
+- 检查是否缺少音频驱动
+- 确保PyAudio相关库正确打包
 
 ---
 
@@ -240,6 +370,113 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 - 📋 **pyproject.toml** - 使用现代Python项目配置管理
 - 🔧 **配置工具** - 添加配置修复和快速设置工具
 - 📦 **依赖更新** - 更新所有依赖到最新稳定版本
+
+---
+
+## 📁 项目结构
+
+```
+ameath_DesktopPet/
+├── assets/                    # 资源文件目录
+│   ├── gifs/                 # 动画资源
+│   ├── icon/                 # 图标资源
+│   ├── models/               # 模型文件
+│   │   └── kws/             # 关键词检测模型
+│   ├── music/               # 背景音乐
+│   └── voice/               # 语音文件
+├── src/                     # 源代码目录
+│   ├── ai/                  # AI相关模块
+│   │   ├── chat_engine.py   # AI对话引擎
+│   │   ├── llm_engine.py    # LLM引擎
+│   │   └── config_dialog.py # AI配置对话框
+│   ├── animation/           # 动画相关模块
+│   ├── behavior/            # 行为控制模块
+│   ├── core/                # 核心模块
+│   ├── interaction/         # 交互模块
+│   ├── media/               # 媒体模块
+│   ├── productivity/        # 生产力功能模块
+│   ├── src_platform/        # 平台相关模块
+│   ├── translate/           # 翻译模块
+│   ├── ui/                  # UI模块
+│   ├── voice/               # 语音模块
+│   │   ├── voice_assistant.py    # 语音助手
+│   │   ├── voice_recognition.py  # 语音识别
+│   │   └── keyword_spotter.py    # 关键词检测
+│   ├── config.py            # 配置管理
+│   ├── constants.py         # 常量定义
+│   └── main.py              # 主程序入口
+├── build.py                 # 打包脚本
+├── aemeath.spec            # PyInstaller配置文件
+├── requirements.txt         # 依赖列表
+├── pyproject.toml          # 项目配置
+└── README.md               # 项目说明
+```
+
+## 🛠️ 开发指南
+
+### 开发环境设置
+
+1. **克隆项目**
+   ```bash
+   git clone https://github.com/your-repo/ameath_DesktopPet.git
+   cd ameath_DesktopPet
+   ```
+
+2. **创建虚拟环境**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Linux/Mac
+   # 或
+   venv\Scripts\activate  # Windows
+   ```
+
+3. **安装依赖**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **运行程序**
+   ```bash
+   python main.py
+   ```
+
+### 代码规范
+
+- 使用Python 3.12+语法
+- 遵循PEP 8代码风格
+- 添加适当的注释和文档字符串
+- 使用类型提示（Type Hints）
+
+### 调试技巧
+
+1. **启用调试模式**：参考上文的"调试模式"章节
+2. **查看日志**：调试模式下会输出详细日志
+3. **使用控制台版本**：打包后使用Aemeath_Console.exe查看错误信息
+4. **单元测试**：项目使用pytest进行单元测试
+
+### 打包发布
+
+1. **运行打包脚本**
+   ```bash
+   python build.py
+   ```
+
+2. **检查打包结果**
+   - 窗口版本：`dist/Aemeath.exe`
+   - 控制台版本：`dist/Aemeath_Console.exe`
+
+3. **测试打包结果**
+   - 在不同Windows版本上测试
+   - 检查所有功能是否正常
+   - 验证语音功能是否正常工作
+
+### 贡献指南
+
+1. Fork项目
+2. 创建功能分支：`git checkout -b feature/AmazingFeature`
+3. 提交更改：`git commit -m 'Add some AmazingFeature'`
+4. 推送到分支：`git push origin feature/AmazingFeature`
+5. 提交Pull Request
 
 ---
 
@@ -301,6 +538,7 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 
 **联系方式：**
 - B站主页：https://space.bilibili.com/1359579550
+- QQ：785193165
 
 ### 特别感谢
 
@@ -317,10 +555,49 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 
 ---
 
+## 🤝 技术支持与扩展
+
+### 联系方式
+
+如有以下需求，欢迎联系项目维护者：
+- **技术支持**：使用中遇到的问题和解决方案
+- **功能建议**：新功能的需求和设计思路
+- **ASR/TTS扩展**：需要接入新的语音识别或合成服务
+- **定制开发**：针对特定场景的定制化需求
+- **商业合作**：商业应用和技术合作
+
+### 扩展支持
+
+项目采用模块化设计，支持快速扩展以下功能：
+
+**ASR服务扩展**：
+- 支持接入新的语音识别服务商
+- 可定制特定领域的识别模型
+- 支持多语种和方言识别
+
+**TTS服务扩展**：
+- 支持接入新的语音合成服务商
+- 可定制特定音色和情感风格
+- 支持SSML标记语言控制
+
+**其他扩展**：
+- 新的AI对话引擎接入
+- 自定义行为模式开发
+- 特定行业场景适配
+
+### 贡献指南
+
+我们欢迎社区贡献！以下是一些可以贡献的方向：
+- 修复已知bug和问题
+- 优化现有功能和性能
+- 添加新的功能特性
+- 完善文档和示例
+- 测试和反馈
+
+---
+
 ## ⭐ 支持项目
 
 如果这个项目对您有帮助，请考虑给我们一个Star！您的支持是我们持续开发的动力。
-
-
 
 ---
