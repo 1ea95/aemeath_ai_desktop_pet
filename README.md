@@ -269,14 +269,8 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 
 **当前支持的ASR（语音识别）服务**：
 1. **阿里云智能语音交互（NLS）**
-   - 模型：paraformer-realtime-v2（推荐）
    - 特点：高精度、低延迟、支持实时流式识别
    - 适用场景：实时对话、语音指令
-
-2. **阿里云百炼ASR**
-   - 模型：sensevoice-v1
-   - 特点：多语言支持、噪声鲁棒性强
-   - 适用场景：多语言环境、嘈杂环境
 
 **当前支持的TTS（语音合成）服务**：
 1. **阿里云百炼CosyVoice**
@@ -284,16 +278,6 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
    - 音色：longwan、cosyvoice-v3-flash-anbao1等
    - 特点：自然流畅、情感丰富、低延迟
    - 适用场景：日常对话、情感表达
-
-2. **阿里云智能语音交互（NLS）TTS**
-   - 模型：samert-v1、xiaoyun、xiaogang等
-   - 特点：稳定可靠、多种音色可选
-   - 适用场景：播报、提示音
-
-**服务选择建议**：
-- **实时对话场景**：推荐使用阿里云NLS ASR + 百炼CosyVoice TTS
-- **多语言需求**：推荐使用百炼ASR + 百炼CosyVoice TTS
-- **稳定性优先**：推荐使用阿里云NLS ASR + NLS TTS
 
 **扩展支持**：
 - 项目架构支持快速接入新的ASR和TTS服务
@@ -309,8 +293,8 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 4. 在程序中配置TTS相关参数
 
 **支持的音色和模型**：
-- 模型：cosyvoice-v1、cosyvoice-v3-flash等
-- 音色：longwan、cosyvoice-v3-flash-anbao1等
+- 模型：cosyvoice-v3-flash,cosyvoice-v3-plus等
+- 音色：longwan、cosyvoice-v3-flash-aemeath1等
 - 音量：0-100（可调节）
 
 #### 4. 常见问题解决
