@@ -1,0 +1,23 @@
+[project]
+name = "Aemeath"
+version = "3.4.0"
+description = "爱弥斯桌面宠物 - 支持AI对话、语音交互、划词翻译等功能"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # 核心依赖
+    "pillow>=12.1.0",
+    "pystray>=0.19.0",
+    "pygame>=2.5.2",
+    "requests>=2.28.0",
+    "pywin32>=305",
+    "pyperclip>=1.8.0",
+    
+    # 语音交互依赖
+    "dashscope>=1.17.0",
+    "alibabacloud-nls>=1.0.0",
+    "pyaudio>=0.2.11",
+    "numpy>=1.24.0",
+    "sounddevice>=0.4.6",
+    "sherpa-onnx>=1.9.25",
+]
