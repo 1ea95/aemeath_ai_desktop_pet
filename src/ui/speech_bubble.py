@@ -1,0 +1,501 @@
+"""对话气泡模块 - 点击宠物时显示的对话（美化版）"""
+
+from __future__ import annotations
+
+import random
+import tkinter as tk
+import tkinter.font as tkfont
+from datetime import datetime
+from typing import TYPE_CHECKING, Callable, List
+
+if TYPE_CHECKING:
+    from src.core.pet_core import DesktopPet
+
+from src.constants import TRANSPARENT_COLOR
+
+
+class SpeechBubble:
+    """对话气泡类 - 美化版"""
+
+    def __init__(self, app: DesktopPet):
+        self.app = app
+        self.window: tk.Toplevel | None = None
+        self.after_id: str | None = None
+        self.label: tk.Label | None = None
+        self._offset_x = 0  # 相对于宠物的偏移
+        self._offset_y = 0
+        self._style = {
+            "bubble": "#FFD1E8",
+            "bubble_edge": "#FFB6DB",
+            "highlight": "#FFE8F4",
+            "text": "#5C3B4A",
+            "muted": "#8E6A7B",
+        }
+        # 打字机效果相关
+        self._typewriter_after_id: str | None = None
+        self._typewriter_text_id: int | None = None
+        self._typewriter_canvas: tk.Canvas | None = None
+        self._is_typing = False
+
+    def show(
+        self,
+        text: str | None = None,
+        duration: int | None = 3000,
+        x: int | None = None,
+        y: int | None = None,
+        allow_during_music: bool = False,
+    ) -> None:
+        """显示对话气泡
+
+        Args:
+            text: 显示的文字，None则随机选择
+            duration: 显示时长（毫秒）
+            x: X坐标，None则自动计算
+            y: Y坐标，None则自动计算
+        """
+        if getattr(self.app, "_music_playing", False) and not allow_during_music:
+            return
+
+        # 如果已有气泡，先关闭
+        self.hide()
+
+        # 获取文字
+        if text is None:
+            text = self._get_random_text()
+
+        # 计算位置（相对于宠物）
+        if x is None:
+            x = int(self.app.x + self.app.w // 2)
+        if y is None:
+            y = int(self.app.y - 15)
+
+        # 保存偏移量（用于跟随移动）
+        self._offset_x = x - int(self.app.x)
+        self._offset_y = y - int(self.app.y)
+
+        # 创建气泡窗口
+        self.window = tk.Toplevel(self.app.root)
+        self.window.overrideredirect(True)
+        self.window.attributes("-topmost", True)
+        self.window.config(bg=TRANSPARENT_COLOR)
+        self.window.attributes("-transparentcolor", TRANSPARENT_COLOR)
+
+        font = tkfont.Font(family="Microsoft YaHei UI", size=11, weight="bold")
+        wrapped_lines = self._wrap_text(text, font, 200)
+        text_width = (
+            max(font.measure(line) for line in wrapped_lines) if wrapped_lines else 0
+        )
+        line_height = font.metrics("linespace")
+        text_height = line_height * max(1, len(wrapped_lines))
+
+        pad_x = 10
+        pad_y = 8
+        triangle_size = 12
+        radius = 16
+        width = text_width + pad_x * 2
+        height = text_height + pad_y * 2
+
+        canvas = tk.Canvas(
+            self.window,
+            width=width,
+            height=height + triangle_size,
+            bg=TRANSPARENT_COLOR,
+            highlightthickness=0,
+        )
+        canvas.pack()
+
+        self._draw_rounded_rect(
+            canvas,
+            0,
+            0,
+            width,
+            height,
+            radius=radius,
+            fill=self._style["bubble"],
+            outline=self._style["bubble_edge"],
+            width=2,
+        )
+        # 顶部柔光高亮
+        self._draw_rounded_rect(
+            canvas,
+            6,
+            4,
+            width - 6,
+            12,
+            radius=8,
+            fill=self._style["highlight"],
+            outline="",
+            width=0,
+        )
+
+        canvas.create_text(
+            width // 2,
+            height // 2,
+            text="\n".join(wrapped_lines),
+            font=font,
+            fill=self._style["text"],
+            justify=tk.CENTER,
+        )
+
+        # 绘制向下的三角形
+        triangle_x = width // 2
+        triangle_y = height
+        canvas.create_polygon(
+            triangle_x - triangle_size,
+            triangle_y,
+            triangle_x + triangle_size,
+            triangle_y,
+            triangle_x,
+            triangle_y + triangle_size,
+            fill=self._style["bubble"],
+            outline=self._style["bubble_edge"],
+        )
+
+        # 调整窗口大小和位置
+        self.window.update_idletasks()
+        height = height + triangle_size
+
+        # 确保不超出屏幕
+        screen_w = self.app.root.winfo_screenwidth()
+        screen_h = self.app.root.winfo_screenheight()
+        x_pos = max(10, min(x - width // 2, screen_w - width - 10))
+        y_pos = max(10, y - height)
+
+        self.window.geometry(f"{width}x{height}+{x_pos}+{y_pos}")
+
+        # 自动关闭
+        if duration is None or duration <= 0:
+            return
+        self.after_id = self.app.root.after(duration, self.hide)
+
+    def update_position(self) -> None:
+        """更新气泡位置（跟随宠物移动）"""
+        if self.window and self.window.winfo_exists():
+            # 根据当前宠物位置重新计算
+            x = int(self.app.x + self._offset_x)
+            y = int(self.app.y + self._offset_y)
+
+            # 确保不超出屏幕
+            screen_w = self.app.root.winfo_screenwidth()
+            width = self.window.winfo_width()
+            x_pos = max(10, min(x - width // 2, screen_w - width - 10))
+            y_pos = max(10, y - self.window.winfo_height())
+
+            self.window.geometry(f"+{x_pos}+{y_pos}")
+
+    def _draw_rounded_rect(
+        self,
+        canvas: tk.Canvas,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        radius: int,
+        fill: str,
+        outline: str,
+        width: int,
+    ) -> None:
+        """绘制圆角矩形"""
+        radius = max(0, min(radius, (x2 - x1) // 2, (y2 - y1) // 2))
+        if radius == 0:
+            canvas.create_rectangle(
+                x1, y1, x2, y2, fill=fill, outline=outline, width=width
+            )
+            return
+
+        canvas.create_arc(
+            x1,
+            y1,
+            x1 + radius * 2,
+            y1 + radius * 2,
+            start=90,
+            extent=90,
+            fill=fill,
+            outline=outline,
+            width=width,
+        )
+        canvas.create_arc(
+            x2 - radius * 2,
+            y1,
+            x2,
+            y1 + radius * 2,
+            start=0,
+            extent=90,
+            fill=fill,
+            outline=outline,
+            width=width,
+        )
+        canvas.create_arc(
+            x2 - radius * 2,
+            y2 - radius * 2,
+            x2,
+            y2,
+            start=270,
+            extent=90,
+            fill=fill,
+            outline=outline,
+            width=width,
+        )
+        canvas.create_arc(
+            x1,
+            y2 - radius * 2,
+            x1 + radius * 2,
+            y2,
+            start=180,
+            extent=90,
+            fill=fill,
+            outline=outline,
+            width=width,
+        )
+        canvas.create_rectangle(
+            x1 + radius,
+            y1,
+            x2 - radius,
+            y2,
+            fill=fill,
+            outline=outline,
+            width=width,
+        )
+        canvas.create_rectangle(
+            x1,
+            y1 + radius,
+            x2,
+            y2 - radius,
+            fill=fill,
+            outline=outline,
+            width=width,
+        )
+
+    def hide(self) -> None:
+        """隐藏对话气泡"""
+        if self.after_id:
+            self.app.root.after_cancel(self.after_id)
+            self.after_id = None
+
+        # 停止打字机效果
+        self._stop_typewriter()
+
+        if self.window:
+            self.window.destroy()
+            self.window = None
+            self.label = None
+            self._typewriter_canvas = None
+            self._typewriter_text_id = None
+
+    def is_visible(self) -> bool:
+        """判断气泡是否可见"""
+        if not self.window or not self.window.winfo_exists():
+            return False
+        return str(self.window.state()) != "withdrawn"
+
+    def _wrap_text(self, text: str, font: tkfont.Font, max_width: int) -> List[str]:
+        """按宽度换行文本"""
+        lines: List[str] = []
+        for raw_line in text.split("\n"):
+            if not raw_line:
+                lines.append("")
+                continue
+            current = ""
+            for ch in raw_line:
+                if font.measure(current + ch) > max_width and current:
+                    lines.append(current)
+                    current = ch
+                else:
+                    current += ch
+            lines.append(current)
+        return lines
+
+    def _get_random_text(self) -> str:
+        """获取随机问候语 - 统一使用aemeath人设"""
+        hour = datetime.now().hour
+        from src.ai.emys_character import get_random_greeting
+
+        return get_random_greeting(hour)
+
+    def show_click_reaction(self) -> None:
+        """显示点击反应 - 统一使用aemeath人设"""
+        from src.ai.emys_character import EMYS_RESPONSES
+
+        text = random.choice(EMYS_RESPONSES["click_reaction"])
+        self.show(text, duration=2000)
+
+    def show_greeting(self) -> None:
+        """显示问候语"""
+        self.show(duration=4000)
+
+    def show_thinking(self) -> None:
+        """显示思考中动画"""
+        # 取消任何正在进行的打字机效果
+        self._stop_typewriter()
+        self.show("思考中... 💭", duration=None, allow_during_music=True)
+
+    def show_typing_response(
+        self, text: str, speed: int = 50, on_complete: Callable | None = None
+    ) -> None:
+        """以打字机效果显示AI回复（支持多行和自动换行）
+
+        Args:
+            text: 要显示的文本
+            speed: 打字速度（毫秒/字符）
+            on_complete: 完成回调
+        """
+        # 如果已有气泡，先关闭
+        self.hide()
+
+        # 取消之前的打字机效果
+        self._stop_typewriter()
+
+        # 计算位置
+        x = int(self.app.x + self.app.w // 2)
+        y = int(self.app.y - 15)
+
+        # 保存偏移量
+        self._offset_x = x - int(self.app.x)
+        self._offset_y = y - int(self.app.y)
+
+        # 创建气泡窗口
+        self.window = tk.Toplevel(self.app.root)
+        self.window.overrideredirect(True)
+        self.window.attributes("-topmost", True)
+        self.window.config(bg=TRANSPARENT_COLOR)
+        self.window.attributes("-transparentcolor", TRANSPARENT_COLOR)
+
+        font = tkfont.Font(family="Microsoft YaHei UI", size=11, weight="bold")
+        max_bubble_width = 280  # 气泡最大宽度
+
+        # 预计算文本尺寸（使用完整文本）
+        test_label = tk.Label(
+            self.window,
+            text=text,
+            font=font,
+            wraplength=max_bubble_width - 40,  # 内边距
+            justify=tk.CENTER,
+            padx=15,
+            pady=10,
+        )
+        test_label.update_idletasks()
+        text_width = min(max_bubble_width, test_label.winfo_reqwidth() + 30)
+        text_height = test_label.winfo_reqheight()
+        test_label.destroy()
+
+        # 气泡参数
+        triangle_size = 12
+        radius = 16
+        canvas_width = text_width
+        canvas_height = text_height + triangle_size
+
+        # 创建Canvas
+        canvas = tk.Canvas(
+            self.window,
+            width=canvas_width,
+            height=canvas_height,
+            bg=TRANSPARENT_COLOR,
+            highlightthickness=0,
+        )
+        canvas.pack()
+        self._typewriter_canvas = canvas
+
+        # 绘制气泡背景
+        self._draw_rounded_rect(
+            canvas,
+            0,
+            0,
+            canvas_width,
+            text_height,
+            radius=radius,
+            fill=self._style["bubble"],
+            outline=self._style["bubble_edge"],
+            width=2,
+        )
+
+        # 顶部柔光高亮
+        self._draw_rounded_rect(
+            canvas,
+            6,
+            4,
+            canvas_width - 6,
+            12,
+            radius=8,
+            fill=self._style["highlight"],
+            outline="",
+            width=0,
+        )
+
+        # 绘制三角形
+        triangle_x = canvas_width // 2
+        triangle_y = text_height
+        canvas.create_polygon(
+            triangle_x - triangle_size,
+            triangle_y,
+            triangle_x + triangle_size,
+            triangle_y,
+            triangle_x,
+            triangle_y + triangle_size,
+            fill=self._style["bubble"],
+            outline=self._style["bubble_edge"],
+        )
+
+        # 创建文本对象（支持多行）
+        self._typewriter_text_id = canvas.create_text(
+            canvas_width // 2,
+            text_height // 2,
+            text="",
+            font=font,
+            fill=self._style["text"],
+            justify=tk.CENTER,
+            width=max_bubble_width - 40,  # 文本自动换行宽度
+        )
+
+        # 调整窗口位置
+        self.window.update_idletasks()
+
+        screen_w = self.app.root.winfo_screenwidth()
+        screen_h = self.app.root.winfo_screenheight()
+        x_pos = max(10, min(x - canvas_width // 2, screen_w - canvas_width - 10))
+        y_pos = max(10, y - canvas_height)
+        self.window.geometry(f"{canvas_width}x{canvas_height}+{x_pos}+{y_pos}")
+
+        # 开始打字机效果
+        self._is_typing = True
+        self._typewriter_chars = list(text)
+        self._typewriter_index = 0
+        self._typewriter_on_complete = on_complete
+        self._start_typewriter(speed)
+
+    def _start_typewriter(self, speed: int) -> None:
+        """开始打字机效果"""
+        if not self._is_typing or not self.window or not self.window.winfo_exists():
+            return
+
+        if self._typewriter_index < len(self._typewriter_chars):
+            # 显示下一个字符
+            current_text = "".join(self._typewriter_chars[: self._typewriter_index + 1])
+            if self._typewriter_canvas and self._typewriter_text_id:
+                self._typewriter_canvas.itemconfig(
+                    self._typewriter_text_id, text=current_text
+                )
+            self._typewriter_index += 1
+
+            # 继续下一个字符
+            self._typewriter_after_id = self.app.root.after(
+                speed, lambda: self._start_typewriter(speed)
+            )
+        else:
+            # 打字完成
+            self._is_typing = False
+            if self._typewriter_on_complete:
+                self._typewriter_on_complete()
+
+    def _stop_typewriter(self) -> None:
+        """停止打字机效果"""
+        self._is_typing = False
+        if self._typewriter_after_id:
+            try:
+                self.app.root.after_cancel(self._typewriter_after_id)
+            except tk.TclError:
+                pass
+            self._typewriter_after_id = None
+
+    def is_typing(self) -> bool:
+        """是否正在打字"""
+        return self._is_typing
