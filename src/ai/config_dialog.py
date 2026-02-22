@@ -48,6 +48,12 @@ class AIConfigDialog:
         self.asr_token_var = tk.StringVar()
         self.asr_host_url_var = tk.StringVar()
         
+        # 阿里云访问凭证变量
+        self.aliyun_access_key_id_var = tk.StringVar()
+        self.aliyun_access_key_secret_var = tk.StringVar()
+        self.aliyun_region_var = tk.StringVar()
+        self.auto_token_refresh_var = tk.BooleanVar()
+        
         # 音量控制变量
         self.music_volume_var = tk.DoubleVar()
         self.voice_volume_var = tk.DoubleVar()
@@ -208,15 +214,22 @@ class AIConfigDialog:
         ai_frame = ttk.Frame(self.notebook)
         self.notebook.add(ai_frame, text="LLM配置")
         
-        # 语音配置选项卡
-        voice_frame = ttk.Frame(self.notebook)
-        self.notebook.add(voice_frame, text="语音配置")
+        # ASR配置选项卡
+        asr_frame = ttk.Frame(self.notebook)
+        self.notebook.add(asr_frame, text="ASR配置")
+        
+        # TTS配置选项卡
+        tts_frame = ttk.Frame(self.notebook)
+        self.notebook.add(tts_frame, text="TTS配置")
         
         # 创建LLM配置内容
         self._create_ai_config_content(ai_frame, config)
         
-        # 创建语音配置内容
-        self._create_voice_config_content(voice_frame, config)
+        # 创建ASR配置内容
+        self._create_asr_config_content(asr_frame, config)
+        
+        # 创建TTS配置内容
+        self._create_tts_config_content(tts_frame, config)
 
         # 下方固定按钮区域
         button_frame = tk.Frame(main_container, bg="#FFF5F8", height=60)
@@ -343,8 +356,8 @@ class AIConfigDialog:
         # 初始化服务商配置
         self._on_provider_change()
     
-    def _create_voice_config_content(self, parent, config: dict) -> None:
-        """创建语音配置选项卡内容"""
+    def _create_asr_config_content(self, parent, config: dict) -> None:
+        """创建ASR配置选项卡内容"""
         # 语音功能总开关
         voice_enabled_frame = ttk.Frame(parent)
         voice_enabled_frame.pack(fill=tk.X, padx=10, pady=10)
@@ -391,139 +404,83 @@ class AIConfigDialog:
         asr_appkey_entry.pack(fill=tk.X, pady=(5, 0))
         
         ttk.Label(asr_config_frame, text="ASR Token:").pack(anchor=tk.W, pady=(10, 0))
-        self.asr_token_var.set(config.get("asr_token", ""))
-        asr_token_entry = ttk.Entry(asr_config_frame, textvariable=self.asr_token_var)
-        asr_token_entry.pack(fill=tk.X, pady=(5, 0))
+        token_input_frame = ttk.Frame(asr_config_frame)
+        token_input_frame.pack(fill=tk.X, pady=(5, 0))
         
-        # 语音合成
-        tts_frame = ttk.Frame(parent)
-        tts_frame.pack(fill=tk.X, padx=10, pady=10)
+        asr_token_entry = ttk.Entry(token_input_frame, textvariable=self.asr_token_var)
+        asr_token_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
-        self.voice_tts_enabled_var.set(config.get("voice_tts_enabled", False))
-        tts_check = ttk.Checkbutton(
-            tts_frame,
-            text="启用语音合成",
-            variable=self.voice_tts_enabled_var
+        # 自动获取Token按钮
+        auto_token_btn = ttk.Button(
+            token_input_frame,
+            text="自动获取",
+            command=self._auto_get_token,
+            width=10
         )
-        tts_check.pack(anchor=tk.W)
+        auto_token_btn.pack(side=tk.RIGHT, padx=(5, 0))
         
-        # TTS配置
-        tts_config_frame = ttk.Frame(parent)
-        tts_config_frame.pack(fill=tk.X, padx=10, pady=10)
+        # Token状态显示
+        self.token_status_label = ttk.Label(asr_config_frame, text="", foreground="gray")
+        self.token_status_label.pack(anchor=tk.W, pady=(2, 0))
         
-        ttk.Label(tts_config_frame, text="TTS API密钥:").pack(anchor=tk.W)
-        self.tts_api_key_var.set(config.get("tts_api_key", ""))
-        tts_api_key_entry = ttk.Entry(tts_config_frame, textvariable=self.tts_api_key_var)
-        tts_api_key_entry.pack(fill=tk.X, pady=(5, 0))
+        # 阿里云访问凭证配置
+        aliyun_frame = ttk.LabelFrame(parent, text="阿里云访问凭证")
+        aliyun_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        ttk.Label(tts_config_frame, text="TTS URL:").pack(anchor=tk.W, pady=(10, 0))
-        self.tts_url_var.set(config.get("tts_url", "wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1"))
-        tts_url_entry = ttk.Entry(tts_config_frame, textvariable=self.tts_url_var)
-        tts_url_entry.pack(fill=tk.X, pady=(5, 0))
+        # 自动刷新Token选项
+        auto_refresh_frame = ttk.Frame(aliyun_frame)
+        auto_refresh_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        # 声音模型
-        voice_model_frame = ttk.Frame(tts_config_frame)
-        voice_model_frame.pack(fill=tk.X, pady=(10, 0))
+        self.auto_token_refresh_var.set(config.get("auto_token_refresh", True))
+        auto_refresh_check = ttk.Checkbutton(
+            auto_refresh_frame,
+            text="自动刷新Token（推荐）",
+            variable=self.auto_token_refresh_var
+        )
+        auto_refresh_check.pack(anchor=tk.W)
         
-        ttk.Label(voice_model_frame, text="声音模型:").pack(anchor=tk.W)
+        # AccessKey ID
+        access_key_frame = ttk.Frame(aliyun_frame)
+        access_key_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        # 创建声音模型下拉框
-        self.tts_model_var.set(config.get("tts_model", "cosyvoice-v3-flash"))
+        ttk.Label(access_key_frame, text="AccessKey ID:").pack(anchor=tk.W)
+        self.aliyun_access_key_id_var.set(config.get("aliyun_access_key_id", ""))
+        access_key_entry = ttk.Entry(access_key_frame, textvariable=self.aliyun_access_key_id_var)
+        access_key_entry.pack(fill=tk.X, pady=(5, 0))
         
-        model_frame = ttk.Frame(voice_model_frame)
-        model_frame.pack(fill=tk.X, pady=(5, 0))
+        # AccessKey Secret
+        secret_key_frame = ttk.Frame(aliyun_frame)
+        secret_key_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        # 声音模型选项
-        model_options = [
-            "cosyvoice-v2",
-            "cosyvoice-v3-flash",
-            "cosyvoice-v3-plus"
-        ]
+        ttk.Label(secret_key_frame, text="AccessKey Secret:").pack(anchor=tk.W)
+        self.aliyun_access_key_secret_var.set(config.get("aliyun_access_key_secret", ""))
+        secret_key_entry = ttk.Entry(secret_key_frame, textvariable=self.aliyun_access_key_secret_var, show="*")
+        secret_key_entry.pack(fill=tk.X, pady=(5, 0))
         
-        self.tts_model_combo = ttk.Combobox(
-            model_frame,
-            textvariable=self.tts_model_var,
-            values=model_options,
+        # 区域
+        region_frame = ttk.Frame(aliyun_frame)
+        region_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Label(region_frame, text="区域:").pack(anchor=tk.W)
+        self.aliyun_region_var.set(config.get("aliyun_region", "cn-shanghai"))
+        region_combo = ttk.Combobox(
+            region_frame,
+            textvariable=self.aliyun_region_var,
+            values=["cn-shanghai", "cn-beijing", "cn-hangzhou", "cn-shenzhen"],
             state="readonly"
         )
-        self.tts_model_combo.pack(fill=tk.X, pady=(5, 0))
+        region_combo.pack(fill=tk.X, pady=(5, 0))
         
-        # 音色ID
-        voice_id_frame = ttk.Frame(tts_config_frame)
-        voice_id_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        ttk.Label(voice_id_frame, text="音色ID:").pack(anchor=tk.W)
-        self.tts_voice_var.set(config.get("tts_voice", "cosyvoice-v3-flash-anbao1-69f1b1345bb9496b9eab08e6d5462bb2"))
-        voice_id_entry = ttk.Entry(voice_id_frame, textvariable=self.tts_voice_var)
-        voice_id_entry.pack(fill=tk.X, pady=(5, 0))
-        
-        # 音色ID说明
-        voice_id_desc = tk.Label(
-            voice_id_frame,
-            text="音色ID格式示例: cosyvoice-v3-plus-myvoice-xxxxxxxx",
-            bg="#FFF5F8",
-            fg="#888888",
-            font=("Microsoft YaHei", 8),
-            anchor="w",
+        # 凭证说明
+        credential_desc = tk.Label(
+            aliyun_frame,
+            text="说明：请在阿里云控制台获取AccessKey ID和Secret，\n并确保已开通智能语音交互服务",
+            justify=tk.LEFT,
+            fg="gray"
         )
-        voice_id_desc.pack(anchor=tk.W, pady=(5, 0))
+        credential_desc.pack(anchor=tk.W, padx=10, pady=(5, 0))
         
-        # 音量控制
-        volume_frame = ttk.LabelFrame(parent, text="音量控制")
-        volume_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        # 音乐音量
-        music_volume_frame = ttk.Frame(volume_frame)
-        music_volume_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        ttk.Label(music_volume_frame, text="音乐音量:").pack(anchor=tk.W)
-        self.music_volume_var = tk.DoubleVar()
-        self.music_volume_var.set(config.get("music_volume", 0.7))
-        music_volume_scale = ttk.Scale(
-            music_volume_frame,
-            from_=0.0,
-            to=1.0,
-            variable=self.music_volume_var,
-            orient=tk.HORIZONTAL
-        )
-        music_volume_scale.pack(fill=tk.X, pady=(5, 0))
-        
-        music_volume_label = ttk.Label(music_volume_frame, text=f"{int(self.music_volume_var.get() * 100)}%")
-        music_volume_label.pack(anchor=tk.W)
-        
-        # 更新音乐音量标签
-        def update_music_volume_label(value):
-            music_volume_label.config(text=f"{int(float(value) * 100)}%")
-        
-        self.music_volume_var.trace('w', lambda *args: update_music_volume_label(self.music_volume_var.get()))
-        
-        # 语音助手音量
-        voice_volume_frame = ttk.Frame(volume_frame)
-        voice_volume_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        ttk.Label(voice_volume_frame, text="语音助手音量:").pack(anchor=tk.W)
-        self.voice_volume_var = tk.DoubleVar()
-        self.voice_volume_var.set(config.get("voice_volume", 0.8))
-        voice_volume_scale = ttk.Scale(
-            voice_volume_frame,
-            from_=0.0,
-            to=1.0,
-            variable=self.voice_volume_var,
-            orient=tk.HORIZONTAL
-        )
-        voice_volume_scale.pack(fill=tk.X, pady=(5, 0))
-        
-        voice_volume_label = ttk.Label(voice_volume_frame, text=f"{int(self.voice_volume_var.get() * 100)}%")
-        voice_volume_label.pack(anchor=tk.W)
-        
-        # 更新语音助手音量标签
-        def update_voice_volume_label(value):
-            voice_volume_label.config(text=f"{int(float(value) * 100)}%")
-            # 实时更新语音助手音量
-            if hasattr(self.app, 'voice_assistant') and self.app.voice_assistant:
-                self.app.voice_assistant.set_voice_volume(float(value))
-        
-        self.voice_volume_var.trace('w', lambda *args: update_voice_volume_label(self.voice_volume_var.get()))
+
     
     def _on_provider_change(self, event=None) -> None:
         """服务商改变时更新默认模型和Base URL"""
@@ -725,6 +682,12 @@ class AIConfigDialog:
                 # ASR配置
                 "asr_appkey": self.asr_appkey_var.get().strip(),
                 "asr_token": self.asr_token_var.get().strip(),
+                
+                # 阿里云访问凭证配置
+                "aliyun_access_key_id": self.aliyun_access_key_id_var.get().strip(),
+                "aliyun_access_key_secret": self.aliyun_access_key_secret_var.get().strip(),
+                "aliyun_region": self.aliyun_region_var.get().strip(),
+                "auto_token_refresh": self.auto_token_refresh_var.get(),
                 
                 # TTS配置
                 "tts_api_key": self.tts_api_key_var.get().strip(),
@@ -935,3 +898,206 @@ class AIConfigDialog:
             test_window.destroy()
 
         threading.Thread(target=run_test_and_close, daemon=True).start()
+    
+    def _auto_get_token(self) -> None:
+        """自动获取ASR Token"""
+        access_key_id = self.aliyun_access_key_id_var.get().strip()
+        access_key_secret = self.aliyun_access_key_secret_var.get().strip()
+        region = self.aliyun_region_var.get().strip()
+        
+        if not access_key_id or not access_key_secret:
+            messagebox.showerror("错误", "请先填写阿里云访问凭证")
+            return
+        
+        # 显示获取中状态
+        self.token_status_label.config(text="正在获取Token...", foreground="blue")
+        self.dialog.update()
+        
+        try:
+            # 导入token管理器
+            from src.voice.token_manager import get_asr_token, setup_aliyun_credentials
+            
+            # 设置阿里云凭证
+            setup_aliyun_credentials(access_key_id, access_key_secret, region)
+            
+            # 获取token
+            token = get_asr_token(force_refresh=True)
+            
+            if token:
+                # 更新token输入框
+                self.asr_token_var.set(token)
+                
+                # 显示成功状态
+                self.token_status_label.config(text="✅ Token获取成功", foreground="green")
+                messagebox.showinfo("成功", "ASR Token获取成功！")
+            else:
+                # 显示失败状态
+                self.token_status_label.config(text="❌ Token获取失败", foreground="red")
+                messagebox.showerror("错误", "无法获取ASR Token，请检查访问凭证是否正确")
+        except ImportError:
+            self.token_status_label.config(text="❌ 缺少依赖库", foreground="red")
+            messagebox.showerror("错误", "请安装阿里云SDK: pip install aliyun-python-sdk-core==2.15.1")
+        except Exception as e:
+            self.token_status_label.config(text=f"❌ 获取失败: {str(e)}", foreground="red")
+            messagebox.showerror("错误", f"获取Token时发生错误: {str(e)}")
+    
+    def _check_token_status(self) -> None:
+        """检查当前Token状态"""
+        current_token = self.asr_token_var.get().strip()
+        
+        if not current_token:
+            self.token_status_label.config(text="未配置Token", foreground="gray")
+            return
+        
+        try:
+            from src.voice.token_manager import get_token_manager
+            token_manager = get_token_manager()
+            token_info = token_manager.get_token_info()
+            
+            if token_info['is_valid']:
+                if token_info['expire_time']:
+                    self.token_status_label.config(
+                        text=f"✅ Token有效 (过期时间: {token_info['expire_time'][:10]})", 
+                        foreground="green"
+                    )
+                else:
+                    self.token_status_label.config(text="✅ Token有效", foreground="green")
+            else:
+                self.token_status_label.config(text="⚠️ Token已过期或无效", foreground="orange")
+        except Exception:
+            self.token_status_label.config(text="❌ 无法检查Token状态", foreground="red")
+    
+    def _create_tts_config_content(self, parent, config: dict) -> None:
+        """创建TTS配置选项卡内容"""
+        # 语音合成
+        tts_frame = ttk.Frame(parent)
+        tts_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        self.voice_tts_enabled_var.set(config.get("voice_tts_enabled", False))
+        tts_check = ttk.Checkbutton(
+            tts_frame,
+            text="启用语音合成",
+            variable=self.voice_tts_enabled_var
+        )
+        tts_check.pack(anchor=tk.W)
+        
+        # TTS配置
+        tts_config_frame = ttk.Frame(parent)
+        tts_config_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        ttk.Label(tts_config_frame, text="TTS API密钥:").pack(anchor=tk.W)
+        self.tts_api_key_var.set(config.get("tts_api_key", ""))
+        tts_api_key_entry = ttk.Entry(tts_config_frame, textvariable=self.tts_api_key_var)
+        tts_api_key_entry.pack(fill=tk.X, pady=(5, 0))
+        
+        ttk.Label(tts_config_frame, text="TTS URL:").pack(anchor=tk.W, pady=(10, 0))
+        self.tts_url_var.set(config.get("tts_url", "wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1"))
+        tts_url_entry = ttk.Entry(tts_config_frame, textvariable=self.tts_url_var)
+        tts_url_entry.pack(fill=tk.X, pady=(5, 0))
+        
+        # 声音模型
+        voice_model_frame = ttk.Frame(tts_config_frame)
+        voice_model_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        ttk.Label(voice_model_frame, text="声音模型:").pack(anchor=tk.W)
+        
+        # 创建声音模型下拉框
+        self.tts_model_var.set(config.get("tts_model", "cosyvoice-v3-flash"))
+        
+        model_frame = ttk.Frame(voice_model_frame)
+        model_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        # 声音模型选项
+        model_options = [
+            "cosyvoice-v2",
+            "cosyvoice-v3-flash",
+            "cosyvoice-v3-plus"
+        ]
+        
+        self.tts_model_combo = ttk.Combobox(
+            model_frame,
+            textvariable=self.tts_model_var,
+            values=model_options,
+            state="readonly"
+        )
+        self.tts_model_combo.pack(fill=tk.X, pady=(5, 0))
+        
+        # 音色ID
+        voice_id_frame = ttk.Frame(tts_config_frame)
+        voice_id_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        ttk.Label(voice_id_frame, text="音色ID:").pack(anchor=tk.W)
+        self.tts_voice_var.set(config.get("tts_voice", "cosyvoice-v3-flash-anbao1-69f1b1345bb9496b9eab08e6d5462bb2"))
+        voice_id_entry = ttk.Entry(voice_id_frame, textvariable=self.tts_voice_var)
+        voice_id_entry.pack(fill=tk.X, pady=(5, 0))
+        
+        # 音色ID说明
+        voice_id_desc = tk.Label(
+            voice_id_frame,
+            text="音色ID格式示例: cosyvoice-v3-plus-myvoice-xxxxxxxx",
+            bg="#FFF5F8",
+            fg="#888888",
+            font=("Microsoft YaHei", 8),
+            anchor="w",
+        )
+        voice_id_desc.pack(anchor=tk.W, pady=(5, 0))
+        
+        # 音量控制
+        volume_frame = ttk.LabelFrame(parent, text="音量控制")
+        volume_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        # 音乐音量
+        music_volume_frame = ttk.Frame(volume_frame)
+        music_volume_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        ttk.Label(music_volume_frame, text="音乐音量:").pack(anchor=tk.W)
+        self.music_volume_var = tk.DoubleVar()
+        self.music_volume_var.set(config.get("music_volume", 0.7))
+        music_volume_scale = ttk.Scale(
+            music_volume_frame,
+            from_=0.0,
+            to=1.0,
+            variable=self.music_volume_var,
+            orient=tk.HORIZONTAL
+        )
+        music_volume_scale.pack(fill=tk.X, pady=(5, 0))
+        
+        music_volume_label = ttk.Label(music_volume_frame, text=f"{int(self.music_volume_var.get() * 100)}%")
+        music_volume_label.pack(anchor=tk.W)
+        
+        # 更新音乐音量标签
+        def update_music_volume_label(value):
+            music_volume_label.config(text=f"{int(float(value) * 100)}%")
+            # 实时更新音乐音量
+            if hasattr(self.app, 'music_controller') and self.app.music_controller:
+                self.app.music_controller.set_volume(float(value))
+        
+        self.music_volume_var.trace('w', lambda *args: update_music_volume_label(self.music_volume_var.get()))
+        
+        # 语音助手音量
+        voice_volume_frame = ttk.Frame(volume_frame)
+        voice_volume_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        ttk.Label(voice_volume_frame, text="语音助手音量:").pack(anchor=tk.W)
+        self.voice_volume_var = tk.DoubleVar()
+        self.voice_volume_var.set(config.get("voice_volume", 0.8))
+        voice_volume_scale = ttk.Scale(
+            voice_volume_frame,
+            from_=0.0,
+            to=1.0,
+            variable=self.voice_volume_var,
+            orient=tk.HORIZONTAL
+        )
+        voice_volume_scale.pack(fill=tk.X, pady=(5, 0))
+        
+        voice_volume_label = ttk.Label(voice_volume_frame, text=f"{int(self.voice_volume_var.get() * 100)}%")
+        voice_volume_label.pack(anchor=tk.W)
+        
+        # 更新语音助手音量标签
+        def update_voice_volume_label(value):
+            voice_volume_label.config(text=f"{int(float(value) * 100)}%")
+            # 实时更新语音助手音量
+            if hasattr(self.app, 'voice_assistant') and self.app.voice_assistant:
+                self.app.voice_assistant.set_voice_volume(float(value))
+        
+        self.voice_volume_var.trace('w', lambda *args: update_voice_volume_label(self.voice_volume_var.get()))

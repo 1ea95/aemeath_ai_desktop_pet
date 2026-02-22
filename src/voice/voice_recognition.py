@@ -25,6 +25,7 @@ except ImportError:
 import numpy as np
 
 from src.config import load_config
+from .token_manager import get_asr_token
 
 
 class VoiceRecognition:
@@ -93,7 +94,16 @@ class VoiceRecognition:
         config = load_config()
         
         self.appkey = config.get("asr_appkey", "")
-        self.token = config.get("asr_token", "")
+        self.auto_token_refresh = config.get("auto_token_refresh", True)
+        
+        # 根据配置决定是否使用token管理器
+        if self.auto_token_refresh:
+            # 使用token管理器获取token
+            self.token = get_asr_token()
+        else:
+            # 直接使用配置中的token
+            self.token = config.get("asr_token", "")
+            
         self.host_url = config.get("asr_host_url", "wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1")
     
     def _initialize_asr(self):

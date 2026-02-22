@@ -190,6 +190,25 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 
 ### AI配置说明
 
+v3.0版本的AI配置界面已优化为三个独立选项卡，便于管理和配置不同功能：
+
+1. **LLM配置** - 大语言模型相关配置
+   - 支持多种AI服务商（DeepSeek、OpenAI、千问、智谱GLM、Kimi、豆包等）
+   - 可配置API密钥、模型、Base URL等参数
+   - 支持自定义人格和对话设置
+
+2. **ASR配置** - 语音识别相关配置
+   - 语音功能总开关、语音唤醒、语音识别开关
+   - 阿里云ASR服务配置（AppKey、Token）
+   - 阿里云访问凭证配置（AccessKey ID、Secret、区域）
+   - Token自动获取和状态显示
+
+3. **TTS配置** - 语音合成相关配置
+   - 语音合成开关
+   - TTS API密钥、URL配置
+   - 声音模型和音色ID选择
+   - 音量控制（音乐音量、语音助手音量）
+
 支持以下AI服务商：
 
 | 服务商 | 默认模型 | API地址 |
@@ -256,7 +275,9 @@ Aemeath是一款功能丰富的Windows桌面宠物应用，基于原版 [Ameath]
 **Token自动获取指南**：
 - 程序内置了Token自动管理功能，只需配置AccessKey ID和AccessKey Secret
 - Token会自动刷新，无需手动更新
-- 在AI配置界面中填入AccessKey信息即可
+- 在AI配置界面的ASR配置选项卡中填入AccessKey信息即可
+- 支持手动点击"自动获取"按钮立即获取新Token
+- Token状态会实时显示在配置界面中
 4. 在程序中配置ASR相关参数
 
 **支持的音频格式**：

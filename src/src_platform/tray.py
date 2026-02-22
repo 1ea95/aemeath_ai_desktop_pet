@@ -773,7 +773,7 @@ class TrayController:
             pystray.MenuItem("AI助手", self._create_ai_menu()),
             pystray.MenuItem("语音助手", self._create_voice_menu()),
             pystray.MenuItem("翻译助手", self._create_translate_menu()),
-            pystray.MenuItem("配置", self._create_config_menu()),
+            pystray.MenuItem("AI配置", lambda icon, item: self.app.show_ai_config_dialog()),
             pystray.MenuItem("音量控制", self._show_volume_control_dialog),
             pystray.MenuItem("行为模式", self._create_behavior_mode_menu()),
             pystray.MenuItem("番茄钟", self._create_pomodoro_menu()),

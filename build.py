@@ -73,6 +73,7 @@ def check_dependencies():
         ("pyperclip", "pyperclip"),
         ("dashscope", "dashscope"),  # 阿里云大模型SDK，用于TTS语音合成 
         ("alibabacloud-nls", "nls"),  # 阿里云智能语音服务SDK，用于ASR语音识别
+        ("aliyun-python-sdk-core", "aliyunsdkcore"),  # 阿里云SDK核心库，用于获取鉴权token
         ("pyaudio", "pyaudio"),
         ("numpy", "numpy"), 
         ("sounddevice", "sounddevice"),
@@ -180,6 +181,27 @@ def check_tts_resources():
             
     except Exception as e:
         print(f"❌ 检查TTS配置失败: {e}")
+    
+    # 检查token管理器
+    try:
+        from src.voice.token_manager import get_token_manager
+        token_manager = get_token_manager()
+        print("\n🔑 Token管理器: 可用")
+        
+        # 检查阿里云凭证
+        aliyun_access_key_id = config.get('aliyun_access_key_id', '')
+        aliyun_access_key_secret = config.get('aliyun_access_key_secret', '')
+        auto_token_refresh = config.get('auto_token_refresh', True)
+        
+        print(f"阿里云AccessKey ID: {'已配置' if aliyun_access_key_id else '未配置'}")
+        print(f"阿里云AccessKey Secret: {'已配置' if aliyun_access_key_secret else '未配置'}")
+        print(f"自动刷新Token: {'启用' if auto_token_refresh else '禁用'}")
+        
+        if not aliyun_access_key_id or not aliyun_access_key_secret:
+            print("⚠️ 阿里云凭证未配置，请在设置中配置")
+            
+    except Exception as e:
+        print(f"\n❌ 检查Token管理器失败: {e}")
     
     # 检查音频文件
     audio_dir = Path("assets/voice")
