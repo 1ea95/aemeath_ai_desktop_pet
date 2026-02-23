@@ -15,6 +15,72 @@ from pathlib import Path
 import time
 
 
+def get_version():
+    """从README.md获取当前版本号"""
+    try:
+        with open('README.md', 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.startswith('**当前版本：'):
+                    return line.split('v')[1].strip('**\n')
+        return "3.0.2"  # 默认版本
+    except Exception as e:
+        print(f"获取版本号失败: {e}")
+        return "3.0.2"
+
+
+def update_version_in_spec():
+    """更新spec文件中的版本信息"""
+    version = get_version()
+    try:
+        with open('aemeath.spec', 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 检查是否已经有版本注释
+        if '# 版本: v' in content:
+            # 更新现有版本
+            import re
+            content = re.sub(r'# 版本: v.*', f'# 版本: v{version}', content)
+        else:
+            # 在文件开头添加版本注释
+            content = f'# 版本: v{version}\n' + content
+        
+        with open('aemeath.spec', 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        print(f"✅ 已更新spec文件版本为: v{version}")
+        return True
+    except Exception as e:
+        print(f"❌ 更新spec文件版本失败: {e}")
+        return False
+
+
+def update_version_in_main():
+    """更新main.py中的版本信息"""
+    version = get_version()
+    try:
+        with open('src/main.py', 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 查找并更新版本号
+        import re
+        # 匹配版本号行，格式如: __version__ = "3.0.1"
+        pattern = r'(__version__\s*=\s*")[\d.]+("")'
+        if re.search(pattern, content):
+            content = re.sub(pattern, f'\\g<1>{version}\\g<2>', content)
+            
+            with open('src/main.py', 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            print(f"✅ 已更新main.py版本为: v{version}")
+            return True
+        else:
+            print("⚠️ 未找到main.py中的版本号行")
+            return False
+    except Exception as e:
+        print(f"❌ 更新main.py版本失败: {e}")
+        return False
+
+
 def print_header(title):
     """打印标题"""
     print("\n" + "=" * 60)
@@ -218,6 +284,165 @@ def check_tts_resources():
     return True
 
 
+def check_ui_resources():
+    """检查UI相关资源"""
+    print("\n🎨 检查UI相关资源...")
+    
+    # 检查UI组件管理器
+    try:
+        from src.ui.ui_manager import UIManager
+        print("✅ UI组件管理器: 可用")
+    except Exception as e:
+        print(f"❌ UI组件管理器检查失败: {e}")
+    
+    # 检查UI组件文件
+    ui_components = [
+        "src/ui/speech_bubble.py",
+        "src/ui/music_panel.py",
+        "src/ui/pomodoro_indicator.py",
+        "src/ui/ai_chat_panel.py",
+        "src/ui/ui_manager.py"
+    ]
+    
+    for component in ui_components:
+        if os.path.exists(component):
+            print(f"✅ {component}")
+        else:
+            print(f"❌ {component} (文件不存在)")
+    
+    # 检查动画资源
+    gifs_dir = Path("assets/gifs")
+    if gifs_dir.exists():
+        gif_files = list(gifs_dir.glob("*.gif"))
+        print(f"\n📁 动画资源: {len(gif_files)}个")
+        
+        # 检查关键动画文件
+        key_gifs = ["idle.gif", "idle1.gif", "idle2.gif", "idle3.gif", "idle4.gif"]
+        for gif in key_gifs:
+            if (gifs_dir / gif).exists():
+                print(f"   ✅ {gif}")
+            else:
+                print(f"   ⚠️ {gif} (不存在)")
+    else:
+        print("\n⚠️ 未找到动画资源文件夹")
+    
+    # 检查图标资源
+    icon_path = Path("assets/gifs/aemeath.ico")
+    if icon_path.exists():
+        print(f"\n✅ 应用图标: {icon_path}")
+    else:
+        print(f"\n⚠️ 应用图标不存在: {icon_path}")
+    
+    return True
+
+
+def create_release_package(version, window_exe_path, console_exe_path):
+    """创建发布包"""
+    print_header(f"创建v{version}发布包")
+    
+    # 创建发布目录
+    release_dir = Path(f"release/v{version}")
+    release_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 复制可执行文件
+    try:
+        shutil.copy2(window_exe_path, release_dir / "Aemeath.exe")
+        shutil.copy2(console_exe_path, release_dir / "Aemeath_Console.exe")
+        print(f"✅ 可执行文件已复制到: {release_dir}")
+    except Exception as e:
+        print(f"❌ 复制可执行文件失败: {e}")
+        return False
+    
+    # 复制必要文档
+    docs_to_copy = [
+        "README.md",
+        "CHANGELOG.md",
+        "# Bug List - Aemeath 桌面宠物.md"
+    ]
+    
+    for doc in docs_to_copy:
+        if os.path.exists(doc):
+            try:
+                shutil.copy2(doc, release_dir)
+                print(f"✅ 文档已复制: {doc}")
+            except Exception as e:
+                print(f"❌ 复制文档失败 {doc}: {e}")
+        else:
+            print(f"⚠️ 文档不存在: {doc}")
+    
+    # 创建快速启动脚本
+    try:
+        # 创建窗口版启动脚本
+        with open(release_dir / "启动窗口版.bat", "w", encoding="gbk") as f:
+            f.write(f"@echo off\n")
+            f.write(f"title Aemeath桌面宠物 v{version}\n")
+            f.write(f"echo 正在启动Aemeath桌面宠物...\n")
+            f.write(f"start \"\"\"Aemeath.exe\"\"\n")
+            f.write(f"exit\n")
+        
+        # 创建控制台版启动脚本
+        with open(release_dir / "启动控制台版.bat", "w", encoding="gbk") as f:
+            f.write(f"@echo off\n")
+            f.write(f"title Aemeath桌面宠物 v{version} (控制台模式)\n")
+            f.write(f"echo 正在启动Aemeath桌面宠物(控制台模式)...\n")
+            f.write(f"echo 控制台模式会显示调试信息，适合排查问题\n")
+            f.write(f"pause\n")
+            f.write(f"Aemeath_Console.exe\n")
+            f.write(f"pause\n")
+        
+        print("✅ 快速启动脚本已创建")
+    except Exception as e:
+        print(f"❌ 创建启动脚本失败: {e}")
+    
+    # 创建说明文件
+    try:
+        with open(release_dir / "使用说明.txt", "w", encoding="utf-8") as f:
+            f.write(f"Aemeath桌面宠物 v{version} 使用说明\n")
+            f.write(f"{'='*50}\n\n")
+            f.write(f"【文件说明】\n")
+            f.write(f"Aemeath.exe - 窗口版本，推荐日常使用\n")
+            f.write(f"Aemeath_Console.exe - 控制台版本，显示调试信息，适合排查问题\n")
+            f.write(f"启动窗口版.bat - 快速启动窗口版本的批处理文件\n")
+            f.write(f"启动控制台版.bat - 快速启动控制台版本的批处理文件\n\n")
+            f.write(f"【快速开始】\n")
+            f.write(f"1. 双击'启动窗口版.bat'或'启动控制台版.bat'启动程序\n")
+            f.write(f"2. 首次运行请在托盘菜单中配置API密钥\n")
+            f.write(f"3. 右键点击系统托盘图标可以打开设置菜单\n\n")
+            f.write(f"【注意事项】\n")
+            f.write(f"1. 请确保网络连接正常，AI功能需要网络支持\n")
+            f.write(f"2. 语音功能需要麦克风设备\n")
+            f.write(f"3. 遇到问题请使用控制台版本查看错误信息\n\n")
+            f.write(f"【更新日志】\n")
+            f.write(f"请查看CHANGELOG.md了解详细更新内容\n\n")
+            f.write(f"【问题反馈】\n")
+            f.write(f"如遇到问题，请查看'# Bug List - Aemeath 桌面宠物.md'文件\n")
+        
+        print("✅ 使用说明文件已创建")
+    except Exception as e:
+        print(f"❌ 创建说明文件失败: {e}")
+    
+    # 创建压缩包
+    try:
+        import zipfile
+        zip_path = Path(f"release/Aemeath_v{version}.zip")
+        
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in release_dir.glob("*"):
+                if file_path.is_file():
+                    zipf.write(file_path, file_path.name)
+        
+        # 获取压缩包大小
+        zip_size = zip_path.stat().st_size / (1024 * 1024)  # MB
+        print(f"✅ 发布包已创建: {zip_path}")
+        print(f"   压缩包大小: {zip_size:.2f} MB")
+    except Exception as e:
+        print(f"❌ 创建压缩包失败: {e}")
+    
+    print(f"\n🎉 发布包创建完成！")
+    print(f"📁 发布目录: {release_dir.absolute()}")
+    return True
+
+
 def run_command(command, description, show_output=False):
     """运行命令并处理结果"""
     print(f"\n{description}...")
@@ -329,6 +554,10 @@ def main():
     """主函数"""
     print_header("Aemeath 桌面宠物打包工具")
     
+    # 显示当前版本
+    version = get_version()
+    print(f"当前版本: v{version}")
+    
     start_time = time.time()
     
     # 步骤1: 环境检查
@@ -351,12 +580,18 @@ def main():
         input("按回车键退出...")
         sys.exit(1)
     
-    # 步骤2.5: TTS资源检查
-    print_step("2.5/7", "TTS资源检查")
+    # 步骤2.5: TTS和UI资源检查
+    print_step("2.5/7", "TTS和UI资源检查")
     check_tts_resources()
+    check_ui_resources()
     
     # 步骤3: 检查当前目录
     print_step("3/7", "项目文件检查")
+    
+    # 更新spec文件版本
+    update_version_in_spec()
+    update_version_in_main()
+    
     if not os.path.exists("aemeath.spec"):
         print("❌ 错误: 当前目录中找不到 aemeath.spec 文件")
         print("请确保在项目根目录中运行此脚本")
@@ -474,6 +709,12 @@ def main():
                 print(f"❌ 启动失败: {e}")
         
         print("\n打包任务完成！")
+        
+        # 询问是否创建发布包
+        create_release = input("\n是否创建发布包？(y/n): ").lower().strip()
+        if create_release == 'y':
+            create_release_package(version, window_exe_path, console_exe_path)
+        
         input("按回车键退出...")
     else:
         print("❌ 打包完成但找不到可执行文件")

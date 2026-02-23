@@ -27,16 +27,28 @@ class AIChatPanel:
             self._start_follow()
             if self._input_entry:
                 self._input_entry.focus_set()
+            # 通知UI管理器更新布局
+            if hasattr(self.app, 'ui_manager'):
+                self.app.ui_manager.update_pet_info(self.app.x, self.app.y, self.app.w, self.app.h)
+                self.app.ui_manager.set_component_visibility('ai_chat_panel', True)
             return
 
         self._create_window()
         self._start_follow()
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            self.app.ui_manager.update_pet_info(self.app.x, self.app.y, self.app.w, self.app.h)
+            self.app.ui_manager.set_component_visibility('ai_chat_panel', True)
 
     def hide(self) -> None:
         """隐藏输入框"""
         self._stop_follow()
         if self.window and self.window.winfo_exists():
             self.window.withdraw()
+        
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            self.app.ui_manager.set_component_visibility('ai_chat_panel', False)
 
     def close(self) -> None:
         """关闭并销毁输入框"""
@@ -175,42 +187,17 @@ class AIChatPanel:
 
     def _update_position(self) -> None:
         """更新输入框位置到桌宠下方"""
-        if not self.window or not self.window.winfo_exists():
-            return
-
-        # 获取桌宠当前位置
-        pet_x = getattr(self.app, "x", 200)
-        pet_y = getattr(self.app, "y", 200)
-        pet_w = getattr(self.app, "w", 100)
-        pet_h = getattr(self.app, "h", 100)
-
-        # 获取输入框尺寸
-        panel_w = 260
-        panel_h = 45
-
-        # 计算位置（桌宠正下方，居中）
-        x = int(pet_x) + (int(pet_w) - panel_w) // 2
-        y = int(pet_y) + int(pet_h) + 5
-
-        # 确保不超出屏幕
-        screen_w = self.app.root.winfo_screenwidth()
-        screen_h = self.app.root.winfo_screenheight()
-
-        x = max(10, min(x, screen_w - panel_w - 10))
-
-        # 如果下方空间不够，显示在上方
-        if y + panel_h > screen_h - 50:
-            y = int(pet_y) - panel_h - 5
-
-        # 移动窗口
-        self.window.geometry(f"{panel_w}x{panel_h}+{x}+{y}")
+        # 现在使用UI管理器来处理位置，这里不需要做任何事情
+        # UI管理器会自动计算和设置位置
+        pass
 
     def _start_follow(self) -> None:
         """开始跟随桌宠移动"""
         if self._position_after_id:
             return  # 已经在跟随了
-        # 立即更新一次位置
-        self._update_position()
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            self.app.ui_manager.update_layout()
         self._follow_loop()
 
     def _follow_loop(self) -> None:
@@ -221,7 +208,10 @@ class AIChatPanel:
         # 检查桌宠位置是否变化
         current_pos = (getattr(self.app, "x", 200), getattr(self.app, "y", 200))
         if current_pos != self._last_pet_pos:
-            self._update_position()
+            # 通知UI管理器更新布局
+            if hasattr(self.app, 'ui_manager'):
+                self.app.ui_manager.update_pet_info(self.app.x, self.app.y, self.app.w, self.app.h)
+                self.app.ui_manager.update_layout()
             self._last_pet_pos = current_pos
 
         # 继续循环

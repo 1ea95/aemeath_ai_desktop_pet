@@ -193,7 +193,12 @@ class MusicController:
 
         app._music_playing = False
         app._music_paused = False
-        app._music_start_time = 0.0
+        app._music_pause_start = 0.0
+        
+        # 通知UI管理器更新布局，因为音乐状态变化可能影响其他组件位置
+        if hasattr(app, 'ui_manager'):
+            app.root.update_idletasks()
+            app.ui_manager.update_layout()
         app._music_pause_start = 0.0
         app._music_paused_total = 0.0
 
@@ -215,6 +220,11 @@ class MusicController:
             return
         app._music_paused = True
         app._music_pause_start = time.monotonic()
+        
+        # 通知UI管理器更新布局，因为音乐状态变化可能影响其他组件位置
+        if hasattr(app, 'ui_manager'):
+            app.root.update_idletasks()
+            app.ui_manager.update_layout()
 
     def resume(self) -> None:
         """恢复音乐"""
@@ -227,8 +237,14 @@ class MusicController:
             print(f"恢复音乐失败: {e}")
             return
         pause_duration = time.monotonic() - app._music_pause_start
+        app._music_paused = False
         app._music_paused_total += max(0.0, float(pause_duration))
         app._music_pause_start = 0.0
+        
+        # 通知UI管理器更新布局，因为音乐状态变化可能影响其他组件位置
+        if hasattr(app, 'ui_manager'):
+            app.root.update_idletasks()
+            app.ui_manager.update_layout()
         app._music_paused = False
 
     def _check_end(self) -> None:
@@ -246,18 +262,23 @@ class MusicController:
                 app._music_index = (app._music_index + 1) % len(app._music_playlist)
                 pygame.mixer.music.load(app._music_playlist[app._music_index])
                 pygame.mixer.music.play()
+                app._music_playing = True
                 app._music_start_time = time.monotonic()
                 app._music_pause_start = 0.0
                 app._music_paused_total = 0.0
                 
-                # 更新歌名显示
-                title = self.get_current_title()
-                if title and hasattr(app, 'speech_bubble') and app.speech_bubble:
-                    app.speech_bubble.show(f"🎵 {title}", duration=None, allow_during_music=True)
+                # 通知UI管理器更新布局，因为音乐状态变化可能影响其他组件位置
+                if hasattr(app, 'ui_manager'):
+                    app.root.update_idletasks()
+                    app.ui_manager.update_layout()
                 
                 # 更新歌名显示
                 title = self.get_current_title()
                 if title and hasattr(app, 'speech_bubble') and app.speech_bubble:
+                    # 确保UI管理器有最新的宠物位置信息
+                    if hasattr(app, 'ui_manager'):
+                        app.root.update_idletasks()
+                        app.ui_manager.update_pet_info(app.x, app.y, app.w, app.h)
                     app.speech_bubble.show(f"🎵 {title}", duration=None, allow_during_music=True)
 
         app._music_after_id = app.root.after(500, self._check_end)

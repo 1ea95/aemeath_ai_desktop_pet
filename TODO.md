@@ -2,7 +2,48 @@
 
 *"爱弥斯（Aemeath），你的桌面AI伙伴~"*
 
-## 1. 屏幕识别AI对话功能
+## 1. 人格选择功能
+
+### 功能概述
+实现AI人格选择功能，允许用户在多种预设人格之间切换，每种人格有不同的说话风格和性格特点。
+
+### 当前状态
+- 后端已实现5种人格：爱弥斯、默认、专业助手、超萌、傲娇
+- 人格定义在 `src/ai/emys_character.py` 和 `src/ai/llm_engine.py`
+- **问题**：UI界面中缺少人格选择选项，目前默认使用"爱弥斯"人格
+
+### 实现步骤
+
+#### 1.1 更新 `src/ai/config_dialog.py`
+在LLM配置选项卡中添加人格选择区域：
+- [ ] 添加"人格选择"标签和下拉框
+- [ ] 从 `llm_engine.py` 的 `PERSONALITIES` 字典加载选项
+- [ ] 保存选择的人格到配置文件
+
+#### 1.2 更新 `src/ai/simple_config_dialog.py`
+在简单配置对话框中添加人格选择：
+- [ ] 添加人格选择单选按钮组
+- [ ] 保存选择的人格到配置文件
+
+#### 1.3 更新托盘菜单（可选）
+在托盘菜单中添加快速人格切换选项：
+- [ ] 在AI助手子菜单中添加人格选择子菜单
+- [ ] 实现快速切换功能
+
+### 配置项（已存在）
+```python
+# config.py 中已存在
+"ai_personality": "aemeath",  # 当前选择的人格
+```
+
+### 技术细节
+- 人格切换后需要重新加载AI引擎配置
+- 不同人格使用不同的系统提示词
+- 人格提示词在 `llm_engine.py` 的 `_get_system_prompt()` 方法中定义
+
+---
+
+## 2. 屏幕识别AI对话功能
 
 ### 功能概述
 监听用户切换窗口，触发截屏并调用AI分析屏幕内容，桌宠通过气泡回复。
@@ -25,7 +66,7 @@
 
 ### 实现步骤
 
-#### 1.1 新建 `src/ai/screen_analyzer.py`
+#### 2.1 新建 `src/ai/screen_analyzer.py`
 - `ScreenAnalyzer` 类
 - `start_listening()` - 启动窗口监听
 - `stop_listening()` - 停止监听
@@ -33,21 +74,21 @@
 - `analyze_screen(image)` - 调用智谱API分析
 - `trigger_speaking(response)` - 触发气泡回复
 
-#### 1.2 更新 `src/config.py`
+#### 2.2 更新 `src/config.py`
 - 添加屏幕识别相关配置项
 
-#### 1.3 更新 `src/ai/config_dialog.py`
+#### 2.3 更新 `src/ai/config_dialog.py`
 添加识图AI配置区域：
 - [ ] 启用屏幕识别复选框
 - [ ] 触发概率滑块 (0-100%)
 - [ ] API密钥输入（可选择复用现有AI配置）
 - [ ] 测试连接按钮
 
-#### 1.4 更新 `src/platform/tray.py`
+#### 2.4 更新 `src/platform/tray.py`
 AI助手子菜单添加：
 - [ ] "屏幕识别" 开关（勾选状态关联配置）
 
-#### 1.5 更新 `src/core/pet_core.py`
+#### 2.5 更新 `src/core/pet_core.py`
 - 初始化 `ScreenAnalyzer`
 - 接入气泡回复系统
 
@@ -87,9 +128,9 @@ class ScreenAnalyzer:
 
 ---
 
-## 2. 音效添加
+## 3. 音效添加
 
 
 ---
 
-## 3. 翻译功能
+## 4. 翻译功能

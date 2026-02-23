@@ -3,6 +3,8 @@
 飞吧，朝向春天
 """
 
+__version__ = "3.0.2"
+
 import tkinter as tk
 
 # 必须先启用 DPI 感知

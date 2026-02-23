@@ -245,13 +245,28 @@ class AnimationManager:
 
     def _sync_window_size_and_position(self) -> None:
         app = self.app
+        
+        # 保存旧的尺寸，用于计算中心位置
+        old_w = getattr(app, "w", 100)
+        old_h = getattr(app, "h", 100)
+        
         if getattr(app, "current_frames", None):
-            app.w = app.current_frames[0].width()
-            app.h = app.current_frames[0].height()
+            new_w = app.current_frames[0].width()
+            new_h = app.current_frames[0].height()
         else:
-            app.w, app.h = 100, 100
+            new_w, new_h = 100, 100
+            
+        app.w = new_w
+        app.h = new_h
 
         if hasattr(app, "x") and hasattr(app, "y"):
+            # 保持中心位置不变
+            center_x = app.x + old_w // 2
+            center_y = app.y + old_h // 2
+            
+            app.x = center_x - new_w // 2
+            app.y = center_y - new_h // 2
+            
             app.root.geometry(f"{app.w}x{app.h}+{int(app.x)}+{int(app.y)}")
         else:
             app.x = 200

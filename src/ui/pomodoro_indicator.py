@@ -47,7 +47,18 @@ class PomodoroIndicator:
         )
         self.canvas.pack()
         self._redraw(phase="专注", remaining=0, total=1)
-        self.update_position()
+        
+        # 确保窗口尺寸已更新
+        self.window.update_idletasks()
+        
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            # 确保主窗口已更新
+            self.app.root.update_idletasks()
+            # 更新宠物信息
+            self.app.ui_manager.update_pet_info(self.app.x, self.app.y, self.app.w, self.app.h)
+            # 设置组件可见性并更新布局
+            self.app.ui_manager.set_component_visibility('pomodoro_indicator', True)
 
     def hide(self) -> None:
         """隐藏进度条"""
@@ -55,6 +66,10 @@ class PomodoroIndicator:
             self.window.destroy()
             self.window = None
             self.canvas = None
+            
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            self.app.ui_manager.set_component_visibility('pomodoro_indicator', False)
 
     def update_progress(self, phase: str, remaining: int, total: int) -> None:
         """更新进度条
@@ -67,26 +82,21 @@ class PomodoroIndicator:
         if not self.window or not self.window.winfo_exists():
             self.show()
         self._redraw(phase, remaining, total)
+        
+        # 通知UI管理器更新布局，以防音乐状态发生变化
+        if hasattr(self.app, 'ui_manager'):
+            # 确保主窗口已更新
+            self.app.root.update_idletasks()
+            # 更新宠物信息
+            self.app.ui_manager.update_pet_info(self.app.x, self.app.y, self.app.w, self.app.h)
+            # 设置组件可见性并更新布局
+            self.app.ui_manager.set_component_visibility('pomodoro_indicator', True)
 
     def update_position(self) -> None:
         """更新进度条位置"""
-        if not self.window or not self.window.winfo_exists():
-            return
-
-        x = int(self.app.x + self.app.w // 2)
-        y = int(self.app.y - 22)
-
-        self._offset_x = x - int(self.app.x)
-        self._offset_y = y - int(self.app.y)
-
-        screen_w = self.app.root.winfo_screenwidth()
-        screen_h = self.app.root.winfo_screenheight()
-        width = self._width
-        height = self._height
-
-        x_pos = max(10, min(x - width // 2, screen_w - width - 10))
-        y_pos = max(10, min(y - height, screen_h - height - 10))
-        self.window.geometry(f"{width}x{height}+{x_pos}+{y_pos}")
+        # 现在使用UI管理器来处理位置，这里不需要做任何事情
+        # UI管理器会自动计算和设置位置
+        pass
 
     def _redraw(self, phase: str, remaining: int, total: int) -> None:
         if not self.canvas:

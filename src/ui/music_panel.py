@@ -83,6 +83,19 @@ class MusicPanel:
             self.window.lift()
         self._redraw_all()
         self._schedule_progress()
+        
+        # 确保窗口尺寸已更新
+        if self.window:
+            self.window.update_idletasks()
+        
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            # 确保主窗口已更新
+            self.app.root.update_idletasks()
+            # 更新宠物信息
+            self.app.ui_manager.update_pet_info(self.app.x, self.app.y, self.app.w, self.app.h)
+            # 设置组件可见性并更新布局
+            self.app.ui_manager.set_component_visibility('music_panel', True)
 
     def hide(self) -> None:
         """隐藏面板"""
@@ -91,6 +104,10 @@ class MusicPanel:
             self._progress_after_id = None
         if self.window and self.window.winfo_exists():
             self.window.withdraw()
+        
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            self.app.ui_manager.set_component_visibility('music_panel', False)
 
     def is_visible(self) -> bool:
         if not self.window or not self.window.winfo_exists():
@@ -99,18 +116,9 @@ class MusicPanel:
 
     def update_position(self) -> None:
         """更新面板位置：桌宠正下方居中"""
-        if not self.window or not self.window.winfo_exists():
-            return
-
-        x = int(self.app.x + self.app.w // 2 - self._w // 2)
-        y = int(self.app.y + self.app.h - 2)
-
-        screen_w = self.app.root.winfo_screenwidth()
-        screen_h = self.app.root.winfo_screenheight()
-
-        x_pos = max(10, min(x, screen_w - self._w - 10))
-        y_pos = max(10, min(y, screen_h - self._h - 10))
-        self.window.geometry(f"{self._w}x{self._h}+{x_pos}+{y_pos}")
+        # 现在使用UI管理器来处理位置，这里不需要做任何事情
+        # UI管理器会自动计算和设置位置
+        pass
 
     def _create_window(self) -> None:
         self.window = tk.Toplevel(self.app.root)

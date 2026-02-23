@@ -49,18 +49,25 @@ class DragHandler:
             app.x = event.x_root - app.drag_start_x
             app.y = event.y_root - app.drag_start_y
             app.root.geometry(f"+{int(app.x)}+{int(app.y)}")
-            if hasattr(app, "speech_bubble") and app.speech_bubble:
-                app.speech_bubble.update_position()
-            if hasattr(app, "pomodoro_indicator") and app.pomodoro_indicator:
-                app.pomodoro_indicator.update_position()
-            if hasattr(app, "music_panel") and app.music_panel:
-                app.music_panel.update_position()
-            if (
-                hasattr(app, "ai_chat_panel")
-                and app.ai_chat_panel
-                and app.ai_chat_panel.is_visible()
-            ):
-                app.ai_chat_panel._update_position()
+            
+            # 使用UI管理器更新布局
+            if hasattr(app, 'ui_manager'):
+                app.ui_manager.update_pet_info(app.x, app.y, app.w, app.h)
+                app.ui_manager.update_layout()
+            else:
+                # 如果没有UI管理器，使用旧的方法
+                if hasattr(app, "speech_bubble") and app.speech_bubble:
+                    app.speech_bubble.update_position()
+                if hasattr(app, "pomodoro_indicator") and app.pomodoro_indicator:
+                    app.pomodoro_indicator.update_position()
+                if hasattr(app, "music_panel") and app.music_panel:
+                    app.music_panel.update_position()
+                if (
+                    hasattr(app, "ai_chat_panel")
+                    and app.ai_chat_panel
+                    and app.ai_chat_panel.is_visible()
+                ):
+                    app.ai_chat_panel._update_position()
 
     def stop_drag(self, event: tk.Event) -> None:
         """停止拖动"""

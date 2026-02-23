@@ -50,7 +50,30 @@ class TrayController:
         """切换隐藏/显示"""
         if self.app.root.state() == "withdrawn":
             self.app.root.deiconify()
+            # 显示宠物时，如果音乐面板之前是显示的，也显示音乐面板
+            if hasattr(self.app, "music_panel") and self.app.music_panel and hasattr(self.app.music_panel, "_was_visible") and self.app.music_panel._was_visible:
+                self.app.music_panel.show()
+            # 显示宠物时，如果语音气泡之前是显示的，也显示语音气泡
+            if hasattr(self.app, "speech_bubble") and self.app.speech_bubble and hasattr(self.app.speech_bubble, "_was_visible") and self.app.speech_bubble._was_visible:
+                # 重新显示歌名
+                title = self.app.get_current_music_title()
+                if title:
+                    self.app.speech_bubble.show(f"🎵 {title}", duration=None, allow_during_music=True)
         else:
+            # 隐藏宠物时，记录音乐面板的显示状态并隐藏音乐面板
+            if hasattr(self.app, "music_panel") and self.app.music_panel and self.app.music_panel.window and self.app.music_panel.window.winfo_exists() and self.app.music_panel.window.state() != "withdrawn":
+                self.app.music_panel._was_visible = True
+                self.app.music_panel.hide()
+            else:
+                if hasattr(self.app, "music_panel") and self.app.music_panel:
+                    self.app.music_panel._was_visible = False
+            # 隐藏宠物时，记录语音气泡的显示状态并隐藏语音气泡
+            if hasattr(self.app, "speech_bubble") and self.app.speech_bubble and self.app.speech_bubble.window and self.app.speech_bubble.window.winfo_exists() and self.app.speech_bubble.window.state() != "withdrawn":
+                self.app.speech_bubble._was_visible = True
+                self.app.speech_bubble.hide()
+            else:
+                if hasattr(self.app, "speech_bubble") and self.app.speech_bubble:
+                    self.app.speech_bubble._was_visible = False
             self.app.root.withdraw()
         icon.menu = self.build_menu()
 
@@ -778,7 +801,7 @@ class TrayController:
             pystray.MenuItem("行为模式", self._create_behavior_mode_menu()),
             pystray.MenuItem("番茄钟", self._create_pomodoro_menu()),
             pystray.MenuItem("缩放", self._create_scale_menu()),
-            pystray.MenuItem("透明度", self._create_transparency_menu()),
+            pystray.MenuItem("不透明度", self._create_transparency_menu()),
             pystray.MenuItem("退出", self._quit),
         )
 

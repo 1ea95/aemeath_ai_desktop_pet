@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+# 版本: v3.0.2
 import sys
 import os
 

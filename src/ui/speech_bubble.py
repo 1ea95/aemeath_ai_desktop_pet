@@ -72,6 +72,8 @@ class SpeechBubble:
         # 保存偏移量（用于跟随移动）
         self._offset_x = x - int(self.app.x)
         self._offset_y = y - int(self.app.y)
+        
+        # 注意：不在这里设置窗口位置，由UI管理器来处理
 
         # 创建气泡窗口
         self.window = tk.Toplevel(self.app.root)
@@ -155,33 +157,34 @@ class SpeechBubble:
         self.window.update_idletasks()
         height = height + triangle_size
 
-        # 确保不超出屏幕
-        screen_w = self.app.root.winfo_screenwidth()
-        screen_h = self.app.root.winfo_screenheight()
-        x_pos = max(10, min(x - width // 2, screen_w - width - 10))
-        y_pos = max(10, y - height)
-
-        self.window.geometry(f"{width}x{height}+{x_pos}+{y_pos}")
+        # 注意：不在这里设置窗口位置，由UI管理器来处理
+        # 只设置窗口尺寸
+        self.window.geometry(f"{width}x{height}")
+        
+        # 确保窗口尺寸已更新
+        self.window.update_idletasks()
+        # 再次确保窗口尺寸已正确计算
+        self.window.update_idletasks()
 
         # 自动关闭
         if duration is None or duration <= 0:
             return
         self.after_id = self.app.root.after(duration, self.hide)
+        
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            # 确保主窗口已更新
+            self.app.root.update_idletasks()
+            # 确保宠物信息是最新的
+            self.app.ui_manager.update_pet_info(self.app.x, self.app.y, self.app.w, self.app.h)
+            # 设置组件可见性并更新布局
+            self.app.ui_manager.set_component_visibility('speech_bubble', True)
 
     def update_position(self) -> None:
         """更新气泡位置（跟随宠物移动）"""
-        if self.window and self.window.winfo_exists():
-            # 根据当前宠物位置重新计算
-            x = int(self.app.x + self._offset_x)
-            y = int(self.app.y + self._offset_y)
-
-            # 确保不超出屏幕
-            screen_w = self.app.root.winfo_screenwidth()
-            width = self.window.winfo_width()
-            x_pos = max(10, min(x - width // 2, screen_w - width - 10))
-            y_pos = max(10, y - self.window.winfo_height())
-
-            self.window.geometry(f"+{x_pos}+{y_pos}")
+        # 现在使用UI管理器来处理位置，这里不需要做任何事情
+        # UI管理器会自动计算和设置位置
+        pass
 
     def _draw_rounded_rect(
         self,
@@ -281,6 +284,14 @@ class SpeechBubble:
             self.label = None
             self._typewriter_canvas = None
             self._typewriter_text_id = None
+        
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            self.app.ui_manager.set_component_visibility('speech_bubble', False)
+            
+        # 通知UI管理器更新布局
+        if hasattr(self.app, 'ui_manager'):
+            self.app.ui_manager.set_component_visibility('speech_bubble', False)
 
     def is_visible(self) -> bool:
         """判断气泡是否可见"""

@@ -18,19 +18,21 @@ from src.constants import (
 )
 from src.startup import check_and_fix_startup, set_auto_startup
 
-from src.productivity.pomodoro import PomodoroManager
+from src.animation.animation_manager import AnimationManager
 from src.behavior.routine_manager import RoutineManager
 from src.behavior.motion_controller import MotionController
-
-from src.animation.animation_manager import AnimationManager
 from src.core.state_manager import StateManager
 from src.core.window_manager import WindowManager
 from src.interaction.click_handler import ClickHandler
 from src.interaction.drag_handler import DragHandler
 from src.media.music_controller import MusicController
+from src.productivity.pomodoro import PomodoroManager
 from src.ai.config_dialog import AIConfigDialog
 from src.ai.llm_engine import LLMEngine
 from src.ui.ai_chat_panel import AIChatPanel
+from src.ui.music_panel import MusicPanel
+from src.ui.pomodoro_indicator import PomodoroIndicator
+from src.ui.ui_manager import UIManager
 from src.translate import TranslateWindow
 from src.voice import VoiceAssistant
 
@@ -61,12 +63,21 @@ class DesktopPet:
         self.pomodoro = PomodoroManager(self)
         self.routine = RoutineManager(self)
         self.motion = MotionController(self)
+        
+        # UI管理器
+        self.ui_manager = UIManager(self)
 
         # AI对话引擎
         self.ai_chat = LLMEngine(self)
 
         # AI聊天面板
         self.ai_chat_panel: AIChatPanel | None = None
+        
+        # 音乐面板
+        self.music_panel: MusicPanel | None = None
+        
+        # 番茄钟指示器
+        self.pomodoro_indicator: PomodoroIndicator | None = None
 
         # 翻译窗口
         self.translate_window = TranslateWindow(self)
@@ -88,6 +99,9 @@ class DesktopPet:
 
         # 初始化状态
         self.state.init_state()
+
+        # 创建UI组件
+        self._create_ui_components()
 
         # 预加载音乐原始帧，避免切换倍率时重复解码
         self.animation.preload_raw_gifs()
@@ -125,6 +139,33 @@ class DesktopPet:
     def _init_state(self) -> None:
         """初始化状态变量"""
         self.state.init_state()
+
+    def _create_ui_components(self) -> None:
+        """创建UI组件"""
+        from src.ui.quick_menu import QuickMenu
+        from src.ui.speech_bubble import SpeechBubble
+        from src.ui.music_panel import MusicPanel
+        from src.ui.pomodoro_indicator import PomodoroIndicator
+        from src.ui.ai_chat_panel import AIChatPanel
+        
+        self.quick_menu = QuickMenu(self)
+        self.speech_bubble = SpeechBubble(self)
+        self.music_panel = MusicPanel(self)
+        self.pomodoro_indicator = PomodoroIndicator(self)
+        self.ai_chat_panel = AIChatPanel(self)
+        
+        # 注册UI组件到管理器
+        # 语音气泡优先级最低，音乐面板优先级中等，番茄钟优先级高，AI聊天面板优先级最高
+        if hasattr(self, 'ui_manager'):
+            self.ui_manager.register_component("speech_bubble", self.speech_bubble, 200, 50, "auto", 0)
+            self.ui_manager.register_component("music_panel", self.music_panel, 248, 100, "auto", 2)
+            self.ui_manager.register_component("pomodoro_indicator", self.pomodoro_indicator, 200, 20, "auto", 1)
+            self.ui_manager.register_component("ai_chat_panel", self.ai_chat_panel, 400, 300, "right", 3)
+            
+            # 初始化UI管理器的宠物信息
+            # 确保宠物位置和尺寸已正确设置
+            self.root.update_idletasks()
+            self.ui_manager.update_pet_info(self.x, self.y, self.w, self.h)
 
     # 动画加载/缓存/音乐帧相关逻辑已迁移至 src/animation/animation_manager.py
 
@@ -253,8 +294,48 @@ class DesktopPet:
                 self.tray_controller.icon.menu = self.tray_controller.build_menu()
 
         self.animation.apply_scale_change()
+        
+        # 确保窗口大小已更新
+        self.root.update_idletasks()
+        
+        # 更新所有UI组件的位置
+        self._update_all_ui_positions()
 
         self._resizing = False
+        
+    def _update_all_ui_positions(self) -> None:
+        """更新所有UI组件的位置"""
+        # 更新宠物信息到UI管理器
+        self.ui_manager.update_pet_info(self.x, self.y, self.w, self.h)
+        
+        # 更新各组件的可见性
+        if hasattr(self, "music_panel") and self.music_panel and self.music_panel.window and self.music_panel.window.winfo_exists():
+            self.ui_manager.set_component_visibility("music_panel", self.music_panel.window.state() != "withdrawn")
+        else:
+            self.ui_manager.set_component_visibility("music_panel", False)
+            
+        if hasattr(self, "pomodoro_indicator") and self.pomodoro_indicator and self.pomodoro_indicator.window and self.pomodoro_indicator.window.winfo_exists():
+            self.ui_manager.set_component_visibility("pomodoro_indicator", self.pomodoro_indicator.window.state() != "withdrawn")
+        else:
+            self.ui_manager.set_component_visibility("pomodoro_indicator", False)
+            
+        if hasattr(self, "ai_chat_panel") and self.ai_chat_panel and self.ai_chat_panel.window and self.ai_chat_panel.window.winfo_exists():
+            self.ui_manager.set_component_visibility("ai_chat_panel", self.ai_chat_panel.window.state() != "withdrawn")
+        else:
+            self.ui_manager.set_component_visibility("ai_chat_panel", False)
+            
+        if hasattr(self, "speech_bubble") and self.speech_bubble and self.speech_bubble.window and self.speech_bubble.window.winfo_exists():
+            self.ui_manager.set_component_visibility("speech_bubble", self.speech_bubble.window.state() != "withdrawn")
+        else:
+            self.ui_manager.set_component_visibility("speech_bubble", False)
+            
+        # 更新快捷菜单位置（如果显示中）
+        if hasattr(self, "quick_menu") and self.quick_menu and self.quick_menu.window and self.quick_menu.window.winfo_exists():
+            # 快捷菜单会在下次显示时自动更新位置
+            pass
+            
+        # 使用UI管理器更新布局
+        self.ui_manager.update_layout()
 
     def set_transparency(self, index: int, persist: bool = True) -> None:
         """设置透明度"""
@@ -329,6 +410,9 @@ class DesktopPet:
             except tk.TclError:
                 pass
             setattr(self, name, None)
+
+    
+
 
     def toggle_music_playback(self) -> bool:
         """切换音乐播放

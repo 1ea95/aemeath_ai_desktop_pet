@@ -475,7 +475,29 @@ class QuickMenu:
 
     def _hide_pet(self) -> None:
         """隐藏宠物"""
+        # 隐藏宠物时，记录音乐面板的显示状态并隐藏音乐面板
+        if hasattr(self.app, "music_panel") and self.app.music_panel and self.app.music_panel.window and self.app.music_panel.window.winfo_exists() and self.app.music_panel.window.state() != "withdrawn":
+            self.app.music_panel._was_visible = True
+            self.app.music_panel.hide()
+        else:
+            if hasattr(self.app, "music_panel") and self.app.music_panel:
+                self.app.music_panel._was_visible = False
+        
+        # 隐藏宠物时，记录语音气泡的显示状态并隐藏语音气泡
+        if hasattr(self.app, "speech_bubble") and self.app.speech_bubble and self.app.speech_bubble.window and self.app.speech_bubble.window.winfo_exists() and self.app.speech_bubble.window.state() != "withdrawn":
+            self.app.speech_bubble._was_visible = True
+            self.app.speech_bubble.hide()
+        else:
+            if hasattr(self.app, "speech_bubble") and self.app.speech_bubble:
+                self.app.speech_bubble._was_visible = False
+                
         self.app.root.withdraw()
+        
+        # 更新系统托盘菜单状态
+        if hasattr(self.app, "tray_controller") and self.app.tray_controller:
+            if self.app.tray_controller.icon:
+                self.app.tray_controller.icon.menu = self.app.tray_controller.build_menu()
+        
         self.hide()
 
     def _toggle_music(self) -> None:
