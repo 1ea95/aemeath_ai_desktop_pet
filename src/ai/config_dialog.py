@@ -68,7 +68,28 @@ class AIConfigDialog:
         self.model_combo = None
         self.tts_model_combo = None
         
-
+        # AI回复长度限制 - 在初始化时读取配置文件
+        from src.config import load_config
+        config = load_config()
+        current_limit = config.get("ai_response_length_limit", 0)
+        
+        # 根据配置值设置默认选项
+        if current_limit == 0:
+            default_length = "无限制"
+        elif current_limit == 20:
+            default_length = "20字"
+        elif current_limit == 50:
+            default_length = "50字"
+        elif current_limit == 100:
+            default_length = "100字"
+        elif current_limit == 200:
+            default_length = "200字"
+        else:
+            # 自定义值
+            default_length = "自定义"
+            self.custom_length_var = tk.StringVar(value=str(current_limit))
+        
+        self.length_limit_var = tk.StringVar(value=default_length)
         
         # LLM配置变量
         self.enabled_var = tk.BooleanVar()
@@ -77,6 +98,8 @@ class AIConfigDialog:
         self.model_var = tk.StringVar()
         self.base_url_var = tk.StringVar()
         self.personality_var = tk.StringVar()
+        self.custom_length_var = tk.StringVar()
+        self.length_limit_var = tk.StringVar(value="无限制")
 
     def show(self) -> None:
         """显示配置对话框"""
@@ -285,6 +308,122 @@ class AIConfigDialog:
 
         # 初始化服务商状态
         self._on_provider_change()
+    
+    def _show_custom_length_dialog(self):
+        """显示自定义字数限制对话框"""
+        # 创建对话框
+        dialog = tk.Toplevel(self.dialog)
+        dialog.title("自定义字数限制")
+        dialog.geometry("400x250")
+        dialog.resizable(False, False)
+        dialog.transient(self.dialog)
+        dialog.grab_set()
+        dialog.configure(bg="#FFF5F8")
+        
+        # 标题
+        title_frame = tk.Frame(dialog, bg="#FF69B4", height=45)
+        title_frame.pack(fill=tk.X)
+        title_frame.pack_propagate(False)
+        
+        tk.Label(
+            title_frame,
+            text="自定义字数限制",
+            bg="#FF69B4",
+            fg="white",
+            font=("Microsoft YaHei", 12, "bold"),
+        ).pack(side=tk.LEFT, padx=15, pady=10)
+        
+        # 内容区域
+        content_frame = tk.Frame(dialog, bg="#FFF5F8")
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        
+        # 输入框
+        tk.Label(
+            content_frame,
+            text="请输入字数限制（0表示无限制）：",
+            bg="#FFF5F8",
+            fg="#5C3B4A",
+            font=("Microsoft YaHei", 10),
+            anchor="w"
+        ).pack(fill=tk.X, pady=(0, 5))
+        
+        self.custom_length_var = tk.StringVar()
+        # 获取当前自定义值
+        from src.config import load_config
+        config = load_config()
+        current_limit = config.get("ai_response_length_limit", 0)
+        if current_limit > 200:  # 如果当前值大于200，显示当前值
+            self.custom_length_var.set(str(current_limit))
+        
+        length_entry = ttk.Entry(
+            content_frame,
+            textvariable=self.custom_length_var,
+            width=20
+        )
+        length_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        # 按钮区域
+        button_frame = tk.Frame(content_frame, bg="#FFF5F8")
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        def apply_custom_length():
+            try:
+                value = self.custom_length_var.get().strip()
+                if value == "":
+                    limit = 0
+                else:
+                    limit = int(value)
+                    if limit < 0:
+                        limit = 0
+                
+                # 更新下拉框显示
+                self.length_limit_var.set(f"{limit}字")
+                # 更新映射
+                self.length_limit_mapping[f"{limit}字"] = limit
+                dialog.destroy()
+            except ValueError:
+                from tkinter import messagebox
+                messagebox.showerror(
+                    "错误",
+                    "请输入有效的数字",
+                    parent=dialog
+                )
+        
+        def cancel_dialog():
+            dialog.destroy()
+        
+        # 按钮
+        tk.Button(
+            button_frame,
+            text="确定",
+            bg="#FF69B4",
+            fg="white",
+            font=("Microsoft YaHei", 10),
+            borderwidth=0,
+            padx=20,
+            pady=5,
+            cursor="hand2",
+            command=apply_custom_length
+        ).pack(side=tk.RIGHT, padx=(0, 5))
+        
+        tk.Button(
+            button_frame,
+            text="取消",
+            bg="#CCCCCC",
+            fg="#5C3B4A",
+            font=("Microsoft YaHei", 10),
+            borderwidth=0,
+            padx=20,
+            pady=5,
+            cursor="hand2",
+            command=cancel_dialog
+        ).pack(side=tk.RIGHT)
+        
+        # 居中显示
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (400 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (250 // 2)
+        dialog.geometry(f"+{x}+{y}")
 
     def _create_ai_config_content(self, parent, config: dict) -> None:
         """创建LLM配置选项卡内容"""
@@ -352,6 +491,137 @@ class AIConfigDialog:
         self.base_url_var.set(config.get("ai_base_url", "https://open.bigmodel.cn/api/paas/v4"))
         base_url_entry = ttk.Entry(base_url_frame, textvariable=self.base_url_var)
         base_url_entry.pack(fill=tk.X, pady=(5, 0))
+        
+        # 人设选择
+        personality_frame = ttk.Frame(parent)
+        personality_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        ttk.Label(personality_frame, text="人设选择:").pack(anchor=tk.W)
+        
+        # 人设下拉框
+        personality_combo_frame = ttk.Frame(personality_frame)
+        personality_combo_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        # 人设选项列表
+        personality_options = [
+            ("aemeath", "爱弥斯（标准版）"),
+            ("aemeath_enhanced", "爱弥斯（加强版）")
+        ]
+        
+        # 创建下拉框
+        self.personality_var = tk.StringVar()
+        self.personality_var.set(config.get("ai_personality", "aemeath"))
+        
+        self.personality_combo = ttk.Combobox(
+            personality_combo_frame,
+            textvariable=self.personality_var,
+            values=[option[1] for option in personality_options],
+            state="readonly",
+            width=20
+        )
+        self.personality_combo.pack(fill=tk.X)
+        
+        # 设置当前选中项
+        current_personality = self.personality_var.get()
+        for value, display in personality_options:
+            if value == current_personality:
+                self.personality_combo.set(display)
+                break
+        
+        # 人设说明
+        personality_desc_frame = ttk.Frame(parent)
+        personality_desc_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        personality_desc_label = ttk.Label(
+            personality_desc_frame,
+            text="标准版：可爱活泼的桌面宠物\n加强版：更丰富的情感表达和互动体验",
+            justify=tk.LEFT,
+            foreground="gray"
+        )
+        personality_desc_label.pack(anchor=tk.W)
+        
+        # 存储人设选项映射，用于保存配置时获取实际值
+        self.personality_mapping = {display: value for value, display in personality_options}
+        
+        # AI回复长度限制
+        length_limit_frame = ttk.Frame(parent)
+        length_limit_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        ttk.Label(length_limit_frame, text="AI回复长度限制:").pack(anchor=tk.W)
+        
+        length_control_frame = ttk.Frame(length_limit_frame)
+        length_control_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        # 长度限制选项
+        length_options = [
+            "无限制",
+            "20字",
+            "50字",
+            "100字",
+            "200字",
+            "自定义"
+        ]
+        
+        # 长度限制映射
+        self.length_limit_mapping = {
+            "无限制": 0,
+            "20字": 20,
+            "50字": 50,
+            "100字": 100,
+            "200字": 200
+        }
+        
+        # 获取当前配置
+        current_limit = config.get("ai_response_length_limit", 0)
+        
+        # 设置当前选中项
+        current_display = "无限制"
+        is_custom = False
+        
+        # 检查是否是预定义的值
+        for display, value in self.length_limit_mapping.items():
+            if value == current_limit:
+                current_display = display
+                break
+        else:
+            # 不是预定义值，检查是否是自定义值
+            if current_limit > 0:
+                current_display = "自定义"
+                is_custom = True
+                # 添加自定义值到映射
+                self.length_limit_mapping[f"{current_limit}字"] = current_limit
+                # 设置自定义长度变量
+                self.custom_length_var = tk.StringVar(value=str(current_limit))
+        
+        # 创建下拉框
+        self.length_limit_var = tk.StringVar()
+        self.length_limit_var.set(current_display)
+        
+        self.length_limit_combo = ttk.Combobox(
+            length_control_frame,
+            textvariable=self.length_limit_var,
+            values=length_options,
+            state="readonly",
+            width=15
+        )
+        self.length_limit_combo.pack(side=tk.LEFT)
+        
+        # 绑定选择事件
+        def on_length_select(event=None):
+            selected = self.length_limit_var.get()
+            if selected == "自定义":
+                self._show_custom_length_dialog()
+        
+        self.length_limit_combo.bind("<<ComboboxSelected>>", on_length_select)
+        
+        # 说明
+        length_desc_label = ttk.Label(
+            length_control_frame,
+            text="（仅对加强版人设有效）",
+            foreground="gray",
+            font=("Microsoft YaHei", 8),
+        )
+        length_desc_label.pack(side=tk.LEFT, padx=(10, 0))
         
         # 初始化服务商配置
         self._on_provider_change()
@@ -671,7 +941,9 @@ class AIConfigDialog:
                 "ai_api_key": ai_api_key,
                 "ai_model": ai_model,
                 "ai_base_url": ai_base_url,
-                "ai_personality": self.personality_var.get(),
+                "ai_personality": self.personality_mapping.get(self.personality_var.get(), "aemeath"),
+                "ai_response_length_limit": self._get_length_limit_value(),
+                "ai_response_length_limit": self.length_limit_mapping.get(self.length_limit_var.get(), 0),
                 
                 # 语音配置
                 "voice_enabled": self.voice_enabled_var.get(),
@@ -752,6 +1024,25 @@ class AIConfigDialog:
             print("详细错误信息:")
             traceback.print_exc()
             messagebox.showerror("错误", error_msg, parent=self.dialog)
+    
+    def _get_length_limit_value(self) -> int:
+        """获取字数限制值"""
+        selected = self.length_limit_var.get()
+        
+        # 如果是自定义选项，从输入框获取值
+        if selected == "自定义":
+            try:
+                value = self.custom_length_var.get().strip()
+                if value == "":
+                    return 0
+                else:
+                    limit = int(value)
+                    return max(0, limit)  # 确保不小于0
+            except (ValueError, AttributeError):
+                return 0
+        
+        # 否则从映射中获取
+        return self.length_limit_mapping.get(selected, 0)
 
     def _test_connection(self) -> None:
         """测试API连接"""
@@ -1041,63 +1332,3 @@ class AIConfigDialog:
             anchor="w",
         )
         voice_id_desc.pack(anchor=tk.W, pady=(5, 0))
-        
-        # 音量控制
-        volume_frame = ttk.LabelFrame(parent, text="音量控制")
-        volume_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        # 音乐音量
-        music_volume_frame = ttk.Frame(volume_frame)
-        music_volume_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        ttk.Label(music_volume_frame, text="音乐音量:").pack(anchor=tk.W)
-        self.music_volume_var = tk.DoubleVar()
-        self.music_volume_var.set(config.get("music_volume", 0.7))
-        music_volume_scale = ttk.Scale(
-            music_volume_frame,
-            from_=0.0,
-            to=1.0,
-            variable=self.music_volume_var,
-            orient=tk.HORIZONTAL
-        )
-        music_volume_scale.pack(fill=tk.X, pady=(5, 0))
-        
-        music_volume_label = ttk.Label(music_volume_frame, text=f"{int(self.music_volume_var.get() * 100)}%")
-        music_volume_label.pack(anchor=tk.W)
-        
-        # 更新音乐音量标签
-        def update_music_volume_label(value):
-            music_volume_label.config(text=f"{int(float(value) * 100)}%")
-            # 实时更新音乐音量
-            if hasattr(self.app, 'music_controller') and self.app.music_controller:
-                self.app.music_controller.set_volume(float(value))
-        
-        self.music_volume_var.trace('w', lambda *args: update_music_volume_label(self.music_volume_var.get()))
-        
-        # 语音助手音量
-        voice_volume_frame = ttk.Frame(volume_frame)
-        voice_volume_frame.pack(fill=tk.X, padx=10, pady=10)
-        
-        ttk.Label(voice_volume_frame, text="语音助手音量:").pack(anchor=tk.W)
-        self.voice_volume_var = tk.DoubleVar()
-        self.voice_volume_var.set(config.get("voice_volume", 0.8))
-        voice_volume_scale = ttk.Scale(
-            voice_volume_frame,
-            from_=0.0,
-            to=1.0,
-            variable=self.voice_volume_var,
-            orient=tk.HORIZONTAL
-        )
-        voice_volume_scale.pack(fill=tk.X, pady=(5, 0))
-        
-        voice_volume_label = ttk.Label(voice_volume_frame, text=f"{int(self.voice_volume_var.get() * 100)}%")
-        voice_volume_label.pack(anchor=tk.W)
-        
-        # 更新语音助手音量标签
-        def update_voice_volume_label(value):
-            voice_volume_label.config(text=f"{int(float(value) * 100)}%")
-            # 实时更新语音助手音量
-            if hasattr(self.app, 'voice_assistant') and self.app.voice_assistant:
-                self.app.voice_assistant.set_voice_volume(float(value))
-        
-        self.voice_volume_var.trace('w', lambda *args: update_voice_volume_label(self.voice_volume_var.get()))

@@ -22,10 +22,10 @@ def get_version():
             for line in f:
                 if line.startswith('**当前版本：'):
                     return line.split('v')[1].strip('**\n')
-        return "3.0.3"  # 默认版本
+        return "3.0.4"  # 默认版本
     except Exception as e:
         print(f"获取版本号失败: {e}")
-        return "3.0.3"
+        return "3.0.4"
 
 
 def update_version_in_spec():

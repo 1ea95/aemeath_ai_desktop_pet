@@ -222,6 +222,22 @@ class TrayController:
                 return handler
 
             quick_items.append(pystray.MenuItem(label, make_handler(question)))
+        
+        # 人设菜单
+        personality_menu = pystray.Menu(
+            pystray.MenuItem(
+                "爱弥斯（标准版）",
+                lambda icon, item: self._set_personality("aemeath"),
+                checked=lambda item: self._get_current_personality() == "aemeath",
+                radio=True,
+            ),
+            pystray.MenuItem(
+                "爱弥斯（加强版）",
+                lambda icon, item: self._set_personality("aemeath_enhanced"),
+                checked=lambda item: self._get_current_personality() == "aemeath_enhanced",
+                radio=True,
+            ),
+        )
 
         return pystray.Menu(
             pystray.MenuItem(
@@ -238,6 +254,11 @@ class TrayController:
             ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(
+                "人设选择",
+                personality_menu,
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
                 "清空对话历史",
                 lambda icon, item: self.app.clear_ai_history(),
             ),
@@ -245,10 +266,33 @@ class TrayController:
     
     def _create_config_menu(self) -> pystray.Menu:
         """创建配置子菜单"""
+        from src.config import load_config
+        config = load_config()
+        
+        # 获取当前配置状态
+        system_commands_enabled = config.get("system_commands_enabled", True)
+        llm_assistance_enabled = config.get("llm_command_assistance_enabled", True)
+        
         return pystray.Menu(
             pystray.MenuItem(
                 "配置AI",
                 lambda icon, item: self.app.show_ai_config_dialog(),
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
+                "系统命令",
+                pystray.Menu(
+                    pystray.MenuItem(
+                        "启用系统命令",
+                        self._toggle_system_commands,
+                        checked=lambda item: self._get_config_value("system_commands_enabled", False),
+                    ),
+                    pystray.MenuItem(
+                        "LLM辅助命令解析",
+                        self._toggle_llm_assistance,
+                        checked=lambda item: self._get_config_value("llm_command_assistance_enabled", False),
+                    ),
+                ),
             ),
         )
     
@@ -486,6 +530,82 @@ class TrayController:
         current = config.get("voice_tts_enabled", False)
         update_config(voice_tts_enabled=not current)
         icon.menu = self.build_menu()
+    
+    def _get_current_personality(self) -> str:
+        """获取当前人设"""
+        from src.config import load_config
+        config = load_config()
+        return config.get("ai_personality", "aemeath")
+    
+    def _set_personality(self, personality: str) -> None:
+        """设置人设"""
+        from src.config import update_config
+        
+        # 更新配置
+        update_config(ai_personality=personality)
+        
+        # 更新AI引擎的人设
+        if hasattr(self.app, 'ai_chat') and self.app.ai_chat:
+            self.app.ai_chat.current_personality = personality
+        
+        # 显示提示
+        personality_names = {
+            "aemeath": "爱弥斯（标准版）",
+            "aemeath_enhanced": "爱弥斯（加强版）"
+        }
+        
+        personality_name = personality_names.get(personality, personality)
+        
+        import tkinter as tk
+        from tkinter import messagebox
+        
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo(
+            "人设切换",
+            f"已切换至: {personality_name}\n\n\n下次对话将使用新人设~",
+        )
+        root.destroy()
+    
+    def _get_config_value(self, key: str, default: bool = False) -> bool:
+        """获取配置值"""
+        from src.config import load_config
+        config = load_config()
+        return config.get(key, default)
+    
+    def _toggle_system_commands(self) -> None:
+        """切换系统命令功能"""
+        from src.config import update_config
+        
+        current = self._get_config_value("system_commands_enabled", False)
+        update_config(system_commands_enabled=not current)
+        self.icon.menu = self.build_menu()
+        
+        # 显示提示
+        status = "已启用" if not current else "已禁用"
+        self._show_notification(f"系统命令功能{status}")
+    
+    def _toggle_llm_assistance(self) -> None:
+        """切换LLM辅助命令解析功能"""
+        from src.config import update_config
+        
+        current = self._get_config_value("llm_command_assistance_enabled", False)
+        update_config(llm_command_assistance_enabled=not current)
+        self.icon.menu = self.build_menu()
+        
+        # 显示提示
+        status = "已启用" if not current else "已禁用"
+        self._show_notification(f"LLM辅助命令解析{status}")
+    
+    def _show_notification(self, message: str) -> None:
+        """显示通知"""
+        import tkinter as tk
+        from tkinter import messagebox
+        
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo("设置", message)
+        root.destroy()
     
     def _show_voice_help(self) -> None:
         """显示语音助手使用说明"""
@@ -796,7 +916,7 @@ class TrayController:
             pystray.MenuItem("AI助手", self._create_ai_menu()),
             pystray.MenuItem("语音助手", self._create_voice_menu()),
             pystray.MenuItem("翻译助手", self._create_translate_menu()),
-            pystray.MenuItem("AI配置", lambda icon, item: self.app.show_ai_config_dialog()),
+            pystray.MenuItem("配置", self._create_config_menu()),
             pystray.MenuItem("音量控制", self._show_volume_control_dialog),
             pystray.MenuItem("行为模式", self._create_behavior_mode_menu()),
             pystray.MenuItem("番茄钟", self._create_pomodoro_menu()),

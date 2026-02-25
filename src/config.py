@@ -32,6 +32,8 @@ def _default_config() -> Dict[str, Any]:
         "ai_model": "glm-4-flash",
         "ai_base_url": "https://open.bigmodel.cn/api/paas/v4",
         "ai_personality": "aemeath",
+        "ai_response_length_limit": 0,  # AI回复长度限制，0表示无限制
+        "llm_command_assistance_enabled": True,  # 是否启用LLM辅助命令解析
         # 翻译配置
         "translate_enabled": False,
         "translate_target_lang": DEFAULT_TRANSLATE_LANG,

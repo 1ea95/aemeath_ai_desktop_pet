@@ -527,3 +527,67 @@ class QuickMenu:
         """切换AI对话面板"""
         self.app.toggle_ai_chat_panel()
         self.hide()
+
+    def _show_voice_commands(self) -> None:
+        """显示语音命令列表"""
+        app = self.app
+        
+        # 创建新窗口显示命令列表
+        commands_window = tk.Toplevel(app.root)
+        commands_window.title("语音命令列表")
+        commands_window.geometry("600x500")
+        commands_window.resizable(False, False)
+        
+        # 设置窗口在屏幕中央
+        screen_width = app.root.winfo_screenwidth()
+        screen_height = app.root.winfo_screenheight()
+        x = (screen_width - 600) // 2
+        y = (screen_height - 500) // 2
+        commands_window.geometry(f"600x500+{x}+{y}")
+        
+        # 创建滚动框架
+        canvas = tk.Canvas(commands_window)
+        scrollbar = ttk.Scrollbar(commands_window, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # 标题
+        title_label = ttk.Label(scrollable_frame, text="语音命令列表", font=("Arial", 16, "bold"))
+        title_label.pack(pady=10)
+        
+        # 从系统命令处理器获取命令列表
+        from src.voice.system_commands import SystemCommandProcessor
+        command_processor = SystemCommandProcessor(app)
+        categories = command_processor.get_command_list()
+        
+        # 显示命令列表
+        for category_name, commands in categories.items():
+            # 分类标题
+            category_label = ttk.Label(scrollable_frame, text=category_name, font=("Arial", 12, "bold"))
+            category_label.pack(pady=(15, 5), anchor="w", padx=20)
+            
+            # 命令列表
+            for command in commands:
+                command_label = ttk.Label(scrollable_frame, text=f"• {command}", font=("Arial", 10))
+                command_label.pack(anchor="w", padx=30, pady=2)
+        
+        # 提示信息
+        tip_label = ttk.Label(scrollable_frame, text="提示：直接说出命令名称即可执行，如'打开记事本'", font=("Arial", 9, "italic"))
+        tip_label.pack(pady=15)
+        
+        # 关闭按钮
+        close_button = ttk.Button(scrollable_frame, text="关闭", command=commands_window.destroy)
+        close_button.pack(pady=10)
+        
+        # 布局
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        self.hide()
