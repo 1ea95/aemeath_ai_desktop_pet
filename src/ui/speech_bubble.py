@@ -329,6 +329,11 @@ class SpeechBubble:
 
         text = random.choice(EMYS_RESPONSES["click_reaction"])
         self.show(text, duration=2000)
+        
+        # 确保UI管理器立即更新布局，特别是在活泼模式和粘人模式下
+        if hasattr(self.app, 'ui_manager') and self.app.behavior_mode in ["active", "clingy"]:
+            # 延迟一帧后更新布局，确保窗口已创建
+            self.app.root.after(10, lambda: self.app.ui_manager.update_layout())
 
     def show_greeting(self) -> None:
         """显示问候语"""

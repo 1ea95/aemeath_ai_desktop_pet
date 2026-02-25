@@ -160,7 +160,7 @@ class DesktopPet:
             self.ui_manager.register_component("speech_bubble", self.speech_bubble, 200, 50, "auto", 0)
             self.ui_manager.register_component("music_panel", self.music_panel, 248, 100, "auto", 2)
             self.ui_manager.register_component("pomodoro_indicator", self.pomodoro_indicator, 200, 20, "auto", 1)
-            self.ui_manager.register_component("ai_chat_panel", self.ai_chat_panel, 400, 300, "right", 3)
+            self.ui_manager.register_component("ai_chat_panel", self.ai_chat_panel, 260, 45, "right", 3)
             
             # 初始化UI管理器的宠物信息
             # 确保宠物位置和尺寸已正确设置
@@ -665,6 +665,9 @@ class DesktopPet:
         # 创建或显示面板
         if not self.ai_chat_panel:
             self.ai_chat_panel = AIChatPanel(self)
+            # 重新注册到UI管理器，确保引用正确
+            if hasattr(self, 'ui_manager'):
+                self.ui_manager.register_component("ai_chat_panel", self.ai_chat_panel, 260, 45, "right", 3)
 
         self.ai_chat_panel.show()
 

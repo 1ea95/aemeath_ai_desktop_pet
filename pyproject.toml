@@ -1,6 +1,6 @@
 [project]
 name = "Aemeath"
-version = "3.0.2"
+version = "3.0.3"
 description = "爱弥斯桌面宠物 - 支持AI对话、语音交互、划词翻译等功能"
 readme = "README.md"
 requires-python = ">=3.12"

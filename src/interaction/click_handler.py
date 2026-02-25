@@ -68,23 +68,22 @@ class ClickHandler:
         if app._drag_started:
             return
 
+        # 音乐播放时显示歌名和音乐控制组件（所有行为模式）
+        if app._music_playing:
+            if app.music_panel.is_visible():
+                app.music_panel.hide()
+                app.speech_bubble.hide()
+            else:
+                app.music_panel.show()
+                title = app.get_current_music_title()
+                if title:
+                    app.speech_bubble.show(
+                        f"🎵 {title}", duration=None, allow_during_music=True
+                    )
+            return
+
         # 安静模式下随机播放 idle3 或 idle4 动画
         if app.behavior_mode == BEHAVIOR_MODE_QUIET:
-            # 音乐播放时禁止单击动画切换和气泡显示
-            if app._music_playing:
-                # 音乐播放模式下单击时显示歌名和音乐控制组件
-                if app.music_panel.is_visible():
-                    app.music_panel.hide()
-                    app.speech_bubble.hide()
-                else:
-                    app.music_panel.show()
-                    title = app.get_current_music_title()
-                    if title:
-                        app.speech_bubble.show(
-                            f"🎵 {title}", duration=None, allow_during_music=True
-                        )
-                return
-
             # 取消之前的定时器
             if self._click_animation_after_id:
                 app.root.after_cancel(self._click_animation_after_id)
@@ -105,25 +104,19 @@ class ClickHandler:
                 self._click_animation_after_id = app.root.after(
                     2000, self._restore_idle_animation
                 )
-            # 安静模式下也触发点击反应气泡
-            app.speech_bubble.show_click_reaction()
-            return
 
-        # 音乐播放模式下显示歌名和音乐控制组件
-        if app._music_playing:
-            if app.music_panel.is_visible():
-                app.music_panel.hide()
-                app.speech_bubble.hide()
-            else:
-                app.music_panel.show()
-                title = app.get_current_music_title()
-                if title:
-                    app.speech_bubble.show(
-                        f"🎵 {title}", duration=None, allow_during_music=True
-                    )
-            return
-
+        # 在所有行为模式下都触发点击反应气泡
         app.speech_bubble.show_click_reaction()
+        
+        # 在活泼模式和粘人模式下，确保UI管理器立即更新布局
+        if app.behavior_mode in ["active", "clingy"]:
+            if hasattr(app, 'ui_manager'):
+                # 确保主窗口已更新
+                app.root.update_idletasks()
+                # 确保宠物信息是最新的
+                app.ui_manager.update_pet_info(app.x, app.y, app.w, app.h)
+                # 立即更新布局
+                app.ui_manager.update_layout()
 
     def _handle_double_click(self, event: tk.Event) -> None:
         """处理双击"""

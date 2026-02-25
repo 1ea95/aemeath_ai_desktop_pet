@@ -46,8 +46,10 @@ class UIComponent:
             if actual_height <= 1:
                 actual_height = self.height
                 
-            # 设置窗口位置
-            self.obj.window.geometry(f"{actual_width}x{actual_height}+{x}+{y}")
+            # 设置窗口位置，确保坐标是整数
+            x_int = int(x)
+            y_int = int(y)
+            self.obj.window.geometry(f"{actual_width}x{actual_height}+{x_int}+{y_int}")
             
             # 确保窗口已更新
             self.obj.window.update_idletasks()
@@ -194,11 +196,11 @@ class UIManager:
             x = self.pet_x + self.pet_width // 2 - component.width // 2
             y = self.pet_y - component.height - 5
             
-        # 确保不超出屏幕
+        # 确保不超出屏幕，并确保坐标是整数
         screen_w = self.app.root.winfo_screenwidth()
         screen_h = self.app.root.winfo_screenheight()
-        x = max(10, min(x, screen_w - component.width - 10))
-        y = max(10, min(y, screen_h - component.height - 10))
+        x = int(max(10, min(x, screen_w - component.width - 10)))
+        y = int(max(10, min(y, screen_h - component.height - 10)))
         
         # 检查是否与其他组件重叠，如果重叠则调整位置
         x, y = self._avoid_overlap(component, x, y, all_visible)
@@ -228,24 +230,24 @@ class UIManager:
         Returns:
             (x, y) 坐标
         """
-        # 根据组件类型自动选择最佳位置
+        # 根据组件类型自动选择最佳位置，确保坐标是整数
         if component.name == "speech_bubble":
             # 语音气泡放在宠物上方，考虑气泡的实际高度
-            x = self.pet_x + self.pet_width // 2 - component.width // 2
+            x = int(self.pet_x + self.pet_width // 2 - component.width // 2)
             # 确保气泡底部在宠物上方，留出一定间隙
-            y = self.pet_y - component.height - 5
+            y = int(self.pet_y - component.height - 5)
         elif component.name == "music_panel":
             # 音乐面板放在宠物下方，留出适当间隙
-            x = self.pet_x + self.pet_width // 2 - component.width // 2
-            y = self.pet_y + self.pet_height + 5
+            x = int(self.pet_x + self.pet_width // 2 - component.width // 2)
+            y = int(self.pet_y + self.pet_height + 5)
         elif component.name == "pomodoro_indicator":
             # 番茄钟根据其他组件情况决定位置
             speech_bubble = next((c for c in all_visible if c.name == "speech_bubble"), None)
             music_panel = next((c for c in all_visible if c.name == "music_panel"), None)
             
             # 默认位置：宠物上方
-            x = self.pet_x + self.pet_width // 2 - component.width // 2
-            y = self.pet_y - component.height - 5
+            x = int(self.pet_x + self.pet_width // 2 - component.width // 2)
+            y = int(self.pet_y - component.height - 5)
             
             if music_panel:
                 # 有音乐面板，番茄钟放在歌名气泡的上方
@@ -268,15 +270,15 @@ class UIManager:
                 if self._is_overlapping(x, y, component.width, component.height,
                                        speech_bubble.x, speech_bubble.y, speech_bubble.width, speech_bubble.height):
                     # 如果与语音气泡重叠，放在语音气泡下方
-                    y = speech_bubble.y + speech_bubble.height + 5
+                    y = int(speech_bubble.y + speech_bubble.height + 5)
         elif component.name == "ai_chat_panel":
             # AI聊天面板放在宠物右侧
-            x = self.pet_x + self.pet_width + 10
-            y = self.pet_y
+            x = int(self.pet_x + self.pet_width + 10)
+            y = int(self.pet_y)
         else:
             # 其他组件默认放在宠物上方
-            x = self.pet_x + self.pet_width // 2 - component.width // 2
-            y = self.pet_y - component.height - 5
+            x = int(self.pet_x + self.pet_width // 2 - component.width // 2)
+            y = int(self.pet_y - component.height - 5)
             
         return (x, y)
         

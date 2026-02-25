@@ -226,7 +226,7 @@ class TrayController:
         return pystray.Menu(
             pystray.MenuItem(
                 "开始对话",
-                lambda icon, item: self.app.open_ai_chat_dialog(),
+                lambda icon, item: self.app.toggle_ai_chat_panel(),
             ),
             pystray.MenuItem(
                 "快捷提问",

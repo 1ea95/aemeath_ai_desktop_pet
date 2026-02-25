@@ -22,10 +22,10 @@ def get_version():
             for line in f:
                 if line.startswith('**当前版本：'):
                     return line.split('v')[1].strip('**\n')
-        return "3.0.2"  # 默认版本
+        return "3.0.3"  # 默认版本
     except Exception as e:
         print(f"获取版本号失败: {e}")
-        return "3.0.2"
+        return "3.0.3"
 
 
 def update_version_in_spec():
@@ -346,9 +346,11 @@ def create_release_package(version, window_exe_path, console_exe_path):
     
     # 复制可执行文件
     try:
-        shutil.copy2(window_exe_path, release_dir / "Aemeath.exe")
-        shutil.copy2(console_exe_path, release_dir / "Aemeath_Console.exe")
+        # 只使用带版本号的文件名
+        versioned_window_name = f"Aemeath{version}.exe"
+        shutil.copy2(window_exe_path, release_dir / versioned_window_name)
         print(f"✅ 可执行文件已复制到: {release_dir}")
+        print(f"   - {versioned_window_name}")
     except Exception as e:
         print(f"❌ 复制可执行文件失败: {e}")
         return False
@@ -372,23 +374,13 @@ def create_release_package(version, window_exe_path, console_exe_path):
     
     # 创建快速启动脚本
     try:
-        # 创建窗口版启动脚本
-        with open(release_dir / "启动窗口版.bat", "w", encoding="gbk") as f:
+        # 创建启动脚本
+        with open(release_dir / "启动.bat", "w", encoding="gbk") as f:
             f.write(f"@echo off\n")
             f.write(f"title Aemeath桌面宠物 v{version}\n")
             f.write(f"echo 正在启动Aemeath桌面宠物...\n")
-            f.write(f"start \"\"\"Aemeath.exe\"\"\n")
+            f.write(f"start \"\"\"Aemeath{version}.exe\"\"\n")
             f.write(f"exit\n")
-        
-        # 创建控制台版启动脚本
-        with open(release_dir / "启动控制台版.bat", "w", encoding="gbk") as f:
-            f.write(f"@echo off\n")
-            f.write(f"title Aemeath桌面宠物 v{version} (控制台模式)\n")
-            f.write(f"echo 正在启动Aemeath桌面宠物(控制台模式)...\n")
-            f.write(f"echo 控制台模式会显示调试信息，适合排查问题\n")
-            f.write(f"pause\n")
-            f.write(f"Aemeath_Console.exe\n")
-            f.write(f"pause\n")
         
         print("✅ 快速启动脚本已创建")
     except Exception as e:
@@ -400,12 +392,10 @@ def create_release_package(version, window_exe_path, console_exe_path):
             f.write(f"Aemeath桌面宠物 v{version} 使用说明\n")
             f.write(f"{'='*50}\n\n")
             f.write(f"【文件说明】\n")
-            f.write(f"Aemeath.exe - 窗口版本，推荐日常使用\n")
-            f.write(f"Aemeath_Console.exe - 控制台版本，显示调试信息，适合排查问题\n")
-            f.write(f"启动窗口版.bat - 快速启动窗口版本的批处理文件\n")
-            f.write(f"启动控制台版.bat - 快速启动控制台版本的批处理文件\n\n")
+            f.write(f"Aemeath{version}.exe - 窗口版本，推荐日常使用\n")
+            f.write(f"启动.bat - 快速启动窗口版本的批处理文件\n\n")
             f.write(f"【快速开始】\n")
-            f.write(f"1. 双击'启动窗口版.bat'或'启动控制台版.bat'启动程序\n")
+            f.write(f"1. 双击'启动.bat'启动程序\n")
             f.write(f"2. 首次运行请在托盘菜单中配置API密钥\n")
             f.write(f"3. 右键点击系统托盘图标可以打开设置菜单\n\n")
             f.write(f"【注意事项】\n")
@@ -640,9 +630,19 @@ def main():
     # 保存窗口版本
     window_exe_path = Path("dist") / "Aemeath.exe"
     if window_exe_path.exists():
-        window_backup = Path("dist") / "Aemeath_Window.exe"
+        # 获取当前版本号
+        current_version = get_version()
+        # 创建带版本号的文件名
+        window_backup = Path("dist") / f"Aemeath{current_version}.exe"
+        window_backup_alt = Path("dist") / "Aemeath_Window.exe"  # 保留原有的无版本号文件名
+        
+        # 复制为带版本号的文件
         shutil.copy2(window_exe_path, window_backup)
         print(f"✅ 窗口版本已保存为: {window_backup.absolute()}")
+        
+        # 同时保留原有的无版本号文件名
+        shutil.copy2(window_exe_path, window_backup_alt)
+        print(f"✅ 窗口版本已保存为: {window_backup_alt.absolute()}")
         
         # 获取文件大小
         file_size = window_backup.stat().st_size / (1024 * 1024)  # MB
@@ -675,10 +675,20 @@ def main():
         
         print_header("打包完成！")
         print("\n📦 已生成两个版本：")
-        print(f"\n1. 窗口版本: {window_exe_path.absolute()}")
+        
+        # 获取带版本号的文件路径
+        current_version = get_version()
+        versioned_window_exe_path = Path("dist") / f"Aemeath{current_version}.exe"
+        
+        print(f"\n1. 窗口版本: {versioned_window_exe_path.absolute()}")
         print(f"   文件大小: {file_size:.2f} MB")
         print(f"\n2. 控制台版本: {console_exe_path.absolute()}")
         print(f"   文件大小: {console_size:.2f} MB")
+        
+        print(f"\n📋 其他文件:")
+        print(f"\n3. 无版本号窗口版本: {window_exe_path.absolute()}")
+        print(f"   文件大小: {file_size:.2f} MB")
+        print(f"\n4. 备份窗口版本: {Path('dist') / 'Aemeath_Window.exe'}")
         
         print(f"\n⏱️ 总耗时: {int(minutes)}分{int(seconds)}秒")
         
@@ -713,7 +723,14 @@ def main():
         # 询问是否创建发布包
         create_release = input("\n是否创建发布包？(y/n): ").lower().strip()
         if create_release == 'y':
-            create_release_package(version, window_exe_path, console_exe_path)
+            # 获取带版本号的窗口可执行文件路径
+            current_version = get_version()
+            versioned_window_exe_path = Path("dist") / f"Aemeath{current_version}.exe"
+            if versioned_window_exe_path.exists():
+                create_release_package(version, versioned_window_exe_path, console_exe_path)
+            else:
+                # 如果带版本号的文件不存在，使用不带版本号的文件
+                create_release_package(version, window_exe_path, console_exe_path)
         
         input("按回车键退出...")
     else:

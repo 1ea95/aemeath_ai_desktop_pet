@@ -3,7 +3,7 @@
 飞吧，朝向春天
 """
 
-__version__ = "3.0.2"
+__version__ = "3.0.3"
 
 import tkinter as tk
 

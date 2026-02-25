@@ -207,12 +207,11 @@ class MotionController:
         if (ix, iy) != self.app._last_pos:
             self.app.root.geometry(f"+{ix}+{iy}")
             self.app._last_pos = (ix, iy)
-            if hasattr(self.app, "speech_bubble") and self.app.speech_bubble:
-                self.app.speech_bubble.update_position()
-            if hasattr(self.app, "pomodoro_indicator") and self.app.pomodoro_indicator:
-                self.app.pomodoro_indicator.update_position()
-            if hasattr(self.app, "music_panel") and self.app.music_panel:
-                self.app.music_panel.update_position()
+            
+            # 使用UI管理器更新所有UI组件的位置
+            if hasattr(self.app, 'ui_manager'):
+                self.app.ui_manager.update_pet_info(ix, iy, self.app.w, self.app.h)
+                self.app.ui_manager.update_layout()
 
         self.app._move_ticks_since_move += 1
         return self._schedule(MOVE_INTERVAL)

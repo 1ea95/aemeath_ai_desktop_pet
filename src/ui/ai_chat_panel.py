@@ -39,6 +39,8 @@ class AIChatPanel:
         if hasattr(self.app, 'ui_manager'):
             self.app.ui_manager.update_pet_info(self.app.x, self.app.y, self.app.w, self.app.h)
             self.app.ui_manager.set_component_visibility('ai_chat_panel', True)
+            # 立即更新布局
+            self.app.ui_manager.update_layout()
 
     def hide(self) -> None:
         """隐藏输入框"""
@@ -136,10 +138,26 @@ class AIChatPanel:
 
         # 设置窗口大小（紧凑）
         self.window.geometry("260x45")
+        
+        # 设置初始位置为桌宠右侧
+        initial_x = getattr(self.app, "x", 200) + getattr(self.app, "w", 100) + 10
+        initial_y = getattr(self.app, "y", 200)
+        self.window.geometry(f"260x45+{initial_x}+{initial_y}")
+        
+        # 设置初始位置为桌宠右侧
+        initial_x = getattr(self.app, "x", 200) + getattr(self.app, "w", 100) + 10
+        initial_y = getattr(self.app, "y", 200)
+        self.window.geometry(f"260x45+{initial_x}+{initial_y}")
 
     def _send_message(self) -> None:
         """发送消息"""
         if not self._input_entry or not self.app.ai_chat:
+            return
+
+        # 检查AI是否已配置
+        if not self.app.ai_chat.is_configured():
+            self.app.speech_bubble.show("AI功能未配置，请先设置API密钥哦~", duration=4000)
+            self.app.show_ai_config_dialog()
             return
 
         message = self._input_entry.get().strip()
